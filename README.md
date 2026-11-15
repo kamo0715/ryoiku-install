@@ -1,0 +1,1 @@
+# ryoiku-install
