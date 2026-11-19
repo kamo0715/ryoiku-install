@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'setup-ryoiku-docker-v2.21-wget.sh'
+      - 'install-ryoiku-v2.21-wget.sh'
       - '.github/workflows/test-public-wget.yml'
   workflow_dispatch:
 
@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Check shell syntax
-        run: bash -n setup-ryoiku-docker-v2.21-wget.sh
+        run: bash -n install-ryoiku-v2.21-wget.sh
 
       - name: Download public v2.21 release without an authentication token
         env:
@@ -27,7 +27,7 @@ jobs:
           GITHUB_TOKEN: ''
         run: |
           set -euo pipefail
-          bash setup-ryoiku-docker-v2.21-wget.sh --download-only --dir "$RUNNER_TEMP/ryoiku"
+          bash install-ryoiku-v2.21-wget.sh --download-only --dir "$RUNNER_TEMP/ryoiku"
           cd "$RUNNER_TEMP/ryoiku"
           printf '%s  %s\n' \
             d68f540010f290b60a3f31e1099a088dd1f063a55a45b445253a86cee1f64bd0 \
@@ -42,7 +42,7 @@ jobs:
           printf '%s\n' '#!/usr/bin/env bash' 'exit 8' > "$RUNNER_TEMP/mockbin/wget"
           chmod +x "$RUNNER_TEMP/mockbin/wget"
           if PATH="$RUNNER_TEMP/mockbin:$PATH" \
-            bash setup-ryoiku-docker-v2.21-wget.sh --download-only --dir "$RUNNER_TEMP/bad-download"
+            bash install-ryoiku-v2.21-wget.sh --download-only --dir "$RUNNER_TEMP/bad-download"
           then
             echo 'Download failure was not rejected!' >&2
             exit 1

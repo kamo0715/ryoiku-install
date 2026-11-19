@@ -4,6 +4,23 @@
 
 > **テスト専用**：HTTP通信です。パスワードや支援内容を同じネットワーク上で傍受される可能性があります。**実在の児童・生徒の個人情報、実際の個別支援計画、運用用のAPIキーは入力しないでください。**本番利用はTLS/HTTPS、事業所の情報管理ルール、ネットワーク分離を含む別設計が必要です。
 
+## wgetでトークン不要の自動導入（v2.21）
+
+このGitHubリポジトリは公開済みです。**Fine-grained PATは不要**です。Ubuntu Serverから次の2行で最新版v2.21の公開Release ZIPをダウンロード・検証・展開し、旧療育アプリを安全に入れ替えます。
+
+```bash
+wget -qO install-ryoiku-v2.21-wget.sh https://raw.githubusercontent.com/kamo0715/ryoiku-install/main/install-ryoiku-v2.21-wget.sh
+bash install-ryoiku-v2.21-wget.sh
+```
+
+ZIPだけ取得する場合：
+
+```bash
+bash install-ryoiku-v2.21-wget.sh --download-only
+```
+
+ダウンロード対象：`https://github.com/kamo0715/ryoiku-install/releases/download/v2.21/ryoiku-v2.21-docker-lan-test.zip`。SHA-256：`d68f540010f290b60a3f31e1099a088dd1f063a55a45b445253a86cee1f64bd0`。整合性確認に失敗した場合は旧コンテナを停止・削除しません。先に新しいDockerイメージをビルドし、その後確認済みの旧療育アプリコンテナだけを入れ替えます。**既存データボリュームは削除しません**。v2.20の同じ名前付きボリュームを引き続き使用しますが、バックアップの取得を推奨します。リポジトリがPublicでもアプリで扱う実データはGitHubに置かないでください。
+
 ## 1. 使用条件
 
 - Ubuntu Serverなどの**Linux Docker Engine** / Docker Compose v2

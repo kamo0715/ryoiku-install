@@ -4,6 +4,17 @@
 
 **最新ソース: v2.21** （v2.18の匿名化強化、v2.19の児童・生徒用日別帳票、v2.20の高学年〜高校生向けレイアウトを含む）
 
+## トークン不要のwget導入（公開リポジトリ／v2.21）
+
+Ubuntu Server / AMD64 / Docker Compose v2向け、LAN内限定テスト版を公開GitHubから認証なしで導入できます。
+
+```bash
+wget -qO install-ryoiku-v2.21-wget.sh https://raw.githubusercontent.com/kamo0715/ryoiku-install/main/install-ryoiku-v2.21-wget.sh
+bash install-ryoiku-v2.21-wget.sh
+```
+
+**既存Docker環境を変更せずファイルを取得・検証だけ**するには `bash install-ryoiku-v2.21-wget.sh --download-only` を使用します。スクリプトはGitHub Releaseの公開ダウンロードURLからZIPを取得し、公開済みv2.21アセットの**固定SHA-256**とZIP検査に合格した場合だけ展開します。まずv2.21イメージをビルドし、その後確認済みの旧療育アプリコンテナのみ入れ替えます。ボリュームは残します。HTTPS未対応のLANテストなので実在の個人情報を投入しないでください。
+
 ## バージョン別ダウンロード（GitHub Releases）
 
 [Releases一覧](https://github.com/kamo0715/ryoiku-install/releases) に、旧Linux用の自己完結型 `.sh`（v2.2〜v2.8）、v2.9差分、ロリポップ向け完全版（v2.11〜v2.20）を掲載しています。
