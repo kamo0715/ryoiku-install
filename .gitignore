@@ -21,3 +21,6 @@ deploy/_private/data/
 private_data/
 deploy/_private/vendor/
 .DS_Store
+
+# Locally reassembled distribution artifact
+releases/v2.20/ryoiku_lolipop_student_schedule_v2_20_ftp_full.zip
