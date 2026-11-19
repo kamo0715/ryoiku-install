@@ -1,0 +1,105 @@
+name: Build and publish versioned releases
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-releases.yml'
+      - 'release-sources/**'
+      - 'scripts/build_full_releases.py'
+      - 'scripts/build_legacy_releases.py'
+      - 'tools/assemble-v2.20.py'
+      - 'releases/v2.20/complete_zip_parts/**'
+      - 'install-ryoiku-v*.sh'
+      - 'update-ryoiku-v*.sh'
+      - 'v2.8/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-historical-and-latest-releases
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.13 (matches archive binary modules)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Verify source snapshots and installers
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/build_full_releases.py scripts/build_legacy_releases.py
+          for script in install-ryoiku-v*.sh update-ryoiku-v*.sh; do
+            test -f "$script" || continue
+            bash -n "$script"
+          done
+
+      - name: Reassemble and verify original v2.20 full archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/assemble-v2.20.py
+
+      - name: Rebuild historical complete ZIPs from exact archived files
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build_full_releases.py \
+            --vendor-zip releases/v2.20/ryoiku_lolipop_student_schedule_v2_20_ftp_full.zip \
+            --out dist/full
+
+      - name: Build Linux installer ZIPs and embedded payloads (v2.2 - v2.9)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build_legacy_releases.py --out dist/legacy
+
+      - name: Publish releases (skip existing files)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          for dir in dist/legacy/v* dist/full/v*; do
+            test -d "$dir" || continue
+            tag="$(basename "$dir")"
+            files=()
+            while IFS= read -r -d '' f; do
+              files+=("$f")
+            done < <(find "$dir" -maxdepth 1 -type f ! -name 'RELEASE_NOTES.md' -print0 | sort -z)
+            ((${#files[@]} > 0)) || { echo "No assets for $tag"; exit 1; }
+            if gh release view "$tag" --repo "$GH_REPO" >/dev/null 2>&1; then
+              echo "Release $tag exists; attach missing assets only"
+              for asset in "${files[@]}"; do
+                name="$(basename "$asset")"
+                if gh release view "$tag" --repo "$GH_REPO" --json assets --jq '.assets[].name' | grep -Fxq "$name"; then
+                  echo "Keeping existing $tag/$name"
+                else
+                  gh release upload "$tag" "$asset" --repo "$GH_REPO"
+                fi
+              done
+            else
+              if [[ "$dir" == dist/legacy/* ]]; then
+                title="Ryoiku $tag - legacy Linux installer / patch"
+              else
+                title="Ryoiku $tag - Lolipop complete FTP package"
+              fi
+              gh release create "$tag" "${files[@]}" --repo "$GH_REPO" --target "$GITHUB_SHA" \
+                --title "$title" --notes-file "$dir/RELEASE_NOTES.md"
+            fi
+          done
+          gh release list --repo "$GH_REPO" --limit 30

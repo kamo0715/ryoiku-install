@@ -1,0 +1,72 @@
+{
+  "v2.11": {
+    "original_filename": "ryoiku_lolipop_ai_ftp_trial_v2_11.zip",
+    "original_sha256": "8eeeba7a204591a41de1fefc480d79e698f71da8616ce1e3ba3c5cf547056f8d",
+    "snapshot": "v2.11.tar.gz",
+    "non_vendor_files": 58,
+    "vendor_files_excluded": 1284
+  },
+  "v2.12": {
+    "original_filename": "ryoiku_lolipop_ftp_no_python_prep_v2_12.zip",
+    "original_sha256": "233d31a7e9a04bea02246b1c28f262dc7b66500a14402d10420c3e6058f63405",
+    "snapshot": "v2.12.tar.gz",
+    "non_vendor_files": 58,
+    "vendor_files_excluded": 1427
+  },
+  "v2.13": {
+    "original_filename": "ryoiku_lolipop_day_flow_v2_13_ftp.zip",
+    "original_sha256": "c23d6c1f1f62e88d0d52fb4efff3d4dd4f991dd44b5606b422e6167423cbb3ca",
+    "snapshot": "v2.13.tar.gz",
+    "non_vendor_files": 60,
+    "vendor_files_excluded": 1427
+  },
+  "v2.14": {
+    "original_filename": "ryoiku_lolipop_day_flow_v2_14_ftp_full.zip",
+    "original_sha256": "74d07b314d3f36b60212e6a62d6090a59c3449a7c770afb8933c586aaeffe0e6",
+    "snapshot": "v2.14.tar.gz",
+    "non_vendor_files": 60,
+    "vendor_files_excluded": 1427
+  },
+  "v2.15": {
+    "original_filename": "ryoiku_lolipop_multi_curriculum_v2_15_ftp_full.zip",
+    "original_sha256": "66dd947753c179c9ae802ca3b05059c041c42c21d9bfcb874dcb3587ded9889b",
+    "snapshot": "v2.15.tar.gz",
+    "non_vendor_files": 63,
+    "vendor_files_excluded": 1427
+  },
+  "v2.16": {
+    "original_filename": "ryoiku_lolipop_onepage_v2_16_ftp_full.zip",
+    "original_sha256": "846330078b0db86edc4bfb844f7fd8c3573daba4a03ece84791943e6926cf426",
+    "snapshot": "v2.16.tar.gz",
+    "non_vendor_files": 63,
+    "vendor_files_excluded": 1427
+  },
+  "v2.17": {
+    "original_filename": "ryoiku_lolipop_ai_privacy_v2_17_ftp_full.zip",
+    "original_sha256": "83f74556457f26d63bb473078f9ab5de2eaed2b9e87934bb3a72489240a2ce39",
+    "snapshot": "v2.17.tar.gz",
+    "non_vendor_files": 66,
+    "vendor_files_excluded": 1427
+  },
+  "v2.18": {
+    "original_filename": "ryoiku_lolipop_privacy_context_v2_18_ftp_full.zip",
+    "original_sha256": "b13de04049a679acf089b60974f3646b1f43c563172736539c978591ce27dd78",
+    "snapshot": "v2.18.tar.gz",
+    "non_vendor_files": 66,
+    "vendor_files_excluded": 1427
+  },
+  "v2.19": {
+    "original_filename": "ryoiku_lolipop_child_flow_v2_19_ftp_full.zip",
+    "original_sha256": "bcf618d7eec3da94aba737b8029efd8fc2de35a4c28d18f61d733cb2aa5ce2a8",
+    "snapshot": "v2.19.tar.gz",
+    "non_vendor_files": 67,
+    "vendor_files_excluded": 1427
+  },
+  "v2.20": {
+    "original_filename": "ryoiku_lolipop_student_schedule_v2_20_ftp_full.zip",
+    "original_sha256": "89d3db9fd235f15705ed7cab7e8787df8f8b852d9c009797b991dfc6311dfafe",
+    "snapshot": "v2.20.tar.gz",
+    "non_vendor_files": 67,
+    "vendor_files_excluded": 1427
+  }
+}
