@@ -1,0 +1,39 @@
+name: ryoiku-lan-test
+services:
+  ryoiku:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        TARGETARCH: amd64
+    image: ryoiku-lan-test:v2.21
+    container_name: ryoiku-lan-test
+    # Linux host networking means NO Docker-published port, and UFW applies normally.
+    # Application binds ONLY to LAN_BIND_IP, never 0.0.0.0.
+    network_mode: host
+    environment:
+      LAN_BIND_IP: ${LAN_BIND_IP:?Set LAN_BIND_IP in .env}
+      LAN_ALLOWED_CIDR: ${LAN_ALLOWED_CIDR:?Set LAN_ALLOWED_CIDR in .env}
+      RYOIKU_PORT: ${RYOIKU_PORT:-18080}
+      RYOIKU_DATA_DIR: /data
+    volumes:
+      - ryoiku_test_data:/data
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m,mode=1777
+    user: "10001:10001"
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 160
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import os,urllib.request; u='http://'+os.environ['LAN_BIND_IP']+':'+os.environ.get('RYOIKU_PORT','18080')+'/healthz'; r=urllib.request.urlopen(u,timeout=3); assert r.status==200"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+volumes:
+  ryoiku_test_data:
+    name: ryoiku_lan_test_data

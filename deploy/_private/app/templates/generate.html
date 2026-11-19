@@ -4,6 +4,18 @@
 <h1>療育カリキュラムをAIで作成</h1>
 <p class="muted">活動の種類を選び、個別支援計画の目標・5領域・安全に関する配慮を踏まえて計画案を生成します。</p>
 {% if not sup %}<div class="notice warn"><strong>個別支援計画は未登録です。</strong> 未登録でも下書きを生成できますが、正式な目標との対応は要確認になります。 <a href="/children/{{child.id}}/support/new">個別支援計画を登録</a></div>{% endif %}
+{% if recent_plans %}
+<section class="panel stack" aria-labelledby="previous-flows">
+<h2 id="previous-flows">保存済みカリキュラムから1日の流れを作成</h2>
+<p class="muted">新しくAI生成しなくても、この利用者の保存済みカリキュラムを選んで1日の支援の流れを作成できます。次の画面で複数の活動や休憩、開始時刻、出力先を設定します。</p>
+<div class="stack">
+{% for p in recent_plans %}
+<div class="editing"><strong>{{p.data.title or '活動計画 #' ~ p.id}}</strong> <span class="muted">#{{p.id}}／{{p.created_at[:10]}}</span>
+<div class="actions"><a class="button secondary" href="/plans/{{p.id}}/day-flow">この計画から1日の流れを作成</a></div></div>
+{% endfor %}
+</div>
+</section>
+{% endif %}
 <div class="notice">参照する個別支援計画：<strong>{{('第' ~ sup.version ~ '版') if sup else '未登録（仮案）'}}</strong> ／ AI：<strong>{{provider}} / {{model}}</strong>
 {% if provider=='demo' %}<p><strong>デモモード：</strong> AIサービスには接続せず、固定の動作確認用サンプルを作成します。</p>{% endif %}</div>
 <form method="post" class="panel stack" id="genform" data-focus-by-group="{{category_focus|tojson|forceescape}}" data-safety-by-group="{{category_safety|tojson|forceescape}}"><input type="hidden" name="_csrf" value="{{csrf}}">
@@ -31,7 +43,12 @@
 <p>外部AIには個別支援計画の原文・氏名・学校の実名・連絡先・診断名・家庭状況・自由記述を送信しません。児童A・学校Aなどの仮表示を使い、2択・指差し・タイマーなど具体的な支援の方法を固定語彙で残してから、職員がプレビューを確認して送信します。</p>
 <p>活動テーマ・場所などの自由記述の原文は外部AIに送りません。生成後に個別支援計画の原文と職員が照合してください。仮表示・情報最小化は、法的な匿名加工情報を保証しません。</p></div>
 <label class="check"><input type="checkbox" name="consent" value="yes" required><span>事業所の情報管理ルール上、この情報を選択中のAIへ送信してよいことを確認しました。</span></label>
-<button type="submit" class="primary" id="generateButton">✦ 外部AIへ送る内容を確認してから生成</button>
+<section class="stack" aria-label="生成後の画面">
+<h2>3. 作成後に進む画面を選択</h2>
+<label class="check"><input type="radio" name="after_generate" value="day_flow" checked><span><strong>カリキュラム作成後、そのまま「1日の支援の流れ」を作成する</strong><small>作成した計画を自動選択し、同じ利用者の他の活動も追加できます。日付・時間・休憩・出力形式を確認してPDF等を生成します。</small></span></label>
+<label class="check"><input type="radio" name="after_generate" value="detail"><span>カリキュラム詳細の確認・編集へ進む</span></label>
+</section>
+<button type="submit" class="primary" id="generateButton">カリキュラムを生成して次へ</button>
 <p id="generation-status" class="sr-only" role="status" aria-live="polite"></p>
 <p class="muted">AIの出力は下書きです。活動の実施前に担当職員が内容と安全面を確認してください。</p>
 </form>

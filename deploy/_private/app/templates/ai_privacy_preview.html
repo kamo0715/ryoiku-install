@@ -14,6 +14,7 @@
 <input type="hidden" name="consent" value="yes">
 <input type="hidden" name="privacy_approved" value="yes">
 <input type="hidden" name="privacy_nonce" value="{{nonce}}">
+<input type="hidden" name="after_generate" value="{{after_generate}}">
 {% for name,value in opts.items() %}<input type="hidden" name="{{name}}" value="{{value}}">{% endfor %}
 <label class="check"><input type="checkbox" required name="privacy_review_check" value="yes"><span>外部送信内容を確認し、事業所の情報管理規程とAI利用の適法性・必要な同意等を確認しました。</span></label>
 <button class="primary" type="submit">確認してAIへ送信</button>

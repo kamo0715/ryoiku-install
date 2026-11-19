@@ -455,7 +455,9 @@ async def support_show(request:Request,cid:int,sid:int):
 async def generate_page(request:Request,cid:int):
     actor(request);child=get_child(cid);sup=latest_support(cid)
     if not child:raise HTTPException(404)
-    return view(request,'generate.html',child=child,sup=sup)
+    existing=[get_plan(x['id']) for x in plans_for_child(cid)[:12]]
+    return view(request,'generate.html',child=child,sup=sup,
+                recent_plans=[p for p in existing if p is not None])
 
 @app.post('/children/{cid}/generate')
 async def generate_post(request:Request,cid:int):
@@ -463,6 +465,9 @@ async def generate_post(request:Request,cid:int):
     if not child:raise HTTPException(404)
     sup=latest_support(cid)
     f=await checked_form(request)
+    # Only navigation is changed; the curriculum generation, audit and AI privacy
+    # confirmation remain identical for both choices.
+    after_generate='day_flow' if f.get('after_generate')=='day_flow' else 'detail'
     if str(f.get('consent',''))!='yes':
         return view(request,'generate.html',child=child,sup=sup,
                     message='入力情報をAIに使用することについて、事業所内の承認を確認してください。')
@@ -510,7 +515,7 @@ async def generate_post(request:Request,cid:int):
                 'nonce':nonce,'expires':int(time.time())+600}
             return view(request,'ai_privacy_preview.html',child=child,sup=sup,
                 outgoing=json.dumps(anonymous,ensure_ascii=False,indent=2),
-                opts=opts,nonce=nonce,
+                opts=opts,nonce=nonce,after_generate=after_generate,
                 message='児童A・学校Aの仮表示と、2択・指差し・タイマーなどの具体的な支援方法を確認してください。元の氏名・学校名・自由記述・病歴・家庭事情は送信しません。')
         # One-use approval, even if the provider fails.
         request.session.pop('ai_privacy_review',None)
@@ -549,6 +554,8 @@ async def generate_post(request:Request,cid:int):
     pid=add_plan(cid,sup['id'] if sup else None,generated,provider,model,user['id'])
     activity(request.state.request_id,user['id'],'ai_generate',pid,status='success',
              detail=f'provider={provider},category={mode}/{kind},support={sup["id"] if sup else "none"},missing={len(generated["missing_inputs"])}')
+    if after_generate=='day_flow':
+        return go(f'/plans/{pid}/day-flow')
     return go(f'/plans/{pid}')
 
 @app.get('/plans/{pid}')

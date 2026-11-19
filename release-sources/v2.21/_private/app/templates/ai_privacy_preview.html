@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% block content %}
+<a class="back" href="/children/{{child.id}}/generate">← カリキュラム生成画面に戻る</a>
+<div class="eyebrow">EXTERNAL AI PRIVACY CHECK</div>
+<h1>AIへ送信する内容の確認</h1>
+<div class="notice warn"><strong>外部送信前の最終確認</strong><p>{{message}}</p>
+<p>氏名・学校名は「児童A」「学校A」に置き換え、支援内容は2択・指差し・手順表などの具体的な手掛かりを残しています。原文との対応はAI送信後、サイト内で職員が確認してください。
+この処理は個人情報保護法上の「匿名加工情報」の保証ではありません。契約・同意・情報管理ルールも確認してください。</p></div>
+<p>送信先：<strong>{{provider}}</strong> ／ モデル：<strong>{{model}}</strong></p>
+<div class="notice"><strong>今回の保護方式</strong><p>実名・学校の実名・具体的な家庭事情・病歴・自由記述は外部送信しません。選択肢の数や活動の進め方など、確認済みの固定表現のみ残します。この内容も他の情報と組み合わせると個人情報に該当し得るため、確認前に識別につながる点がないか確認してください。</p></div>
+<div class="panel stack"><h2>外部AIへの送信本文</h2>
+<pre style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:26rem;overflow:auto;">{{outgoing}}</pre></div>
+<form method="post" action="/children/{{child.id}}/generate" class="panel stack">
+<input type="hidden" name="_csrf" value="{{csrf}}">
+<input type="hidden" name="consent" value="yes">
+<input type="hidden" name="privacy_approved" value="yes">
+<input type="hidden" name="privacy_nonce" value="{{nonce}}">
+<input type="hidden" name="after_generate" value="{{after_generate}}">
+{% for name,value in opts.items() %}<input type="hidden" name="{{name}}" value="{{value}}">{% endfor %}
+<label class="check"><input type="checkbox" required name="privacy_review_check" value="yes"><span>外部送信内容を確認し、事業所の情報管理規程とAI利用の適法性・必要な同意等を確認しました。</span></label>
+<button class="primary" type="submit">確認してAIへ送信</button>
+<a href="/children/{{child.id}}/generate">送信せず戻る</a>
+</form>
+{% endblock %}
