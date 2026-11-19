@@ -16,12 +16,12 @@ v2.11〜v2.19は保存したアプリファイルと共通依存ライブラリ�
 
 ```bash
 sudo apt update && sudo apt install -y wget unzip
-wget -O install-ryoiku-v2.21-wget.sh https://raw.githubusercontent.com/kamo0715/ryoiku-install/main/install-ryoiku-v2.21-wget.sh
-bash -n install-ryoiku-v2.21-wget.sh
-bash install-ryoiku-v2.21-wget.sh
+wget -O setup-ryoiku-docker-v2.21-wget.sh https://raw.githubusercontent.com/kamo0715/ryoiku-install/main/setup-ryoiku-docker-v2.21-wget.sh
+bash -n setup-ryoiku-docker-v2.21-wget.sh
+bash setup-ryoiku-docker-v2.21-wget.sh
 ```
 
-ダウンロードと検証だけ実行する場合：`bash install-ryoiku-v2.21-wget.sh --download-only`。詳しくは[Docker LAN版の手順](docker-lan-v2.21/README_DOCKER_LAN.md)を参照してください。LANテスト環境はHTTPのため**実在の利用者情報を入力しないでください**。
+ダウンロードと検証だけ実行する場合：`bash setup-ryoiku-docker-v2.21-wget.sh --download-only`。詳しくは[Docker LAN版の手順](docker-lan-v2.21/README_DOCKER_LAN.md)を参照してください。LANテスト環境はHTTPのため**実在の利用者情報を入力しないでください**。
 
 ## v2.21：カリキュラム作成から1日の流れへ直接移動
 

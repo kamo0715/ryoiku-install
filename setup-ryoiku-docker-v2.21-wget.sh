@@ -14,7 +14,7 @@ DOWNLOAD_ONLY=false
 
 usage() {
   cat <<'USAGE'
-Usage: bash install-ryoiku-v2.21-wget.sh [--download-only] [--dir DIRECTORY]
+Usage: bash setup-ryoiku-docker-v2.21-wget.sh [--download-only] [--dir DIRECTORY]
   --download-only  Download and verify ZIP; do not modify Docker.
   --dir DIRECTORY  Download and extract into DIRECTORY (default: $HOME).
   -h, --help       Show this help.

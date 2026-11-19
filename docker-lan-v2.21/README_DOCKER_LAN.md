@@ -37,10 +37,10 @@ v2.21の公開リポジトリとReleasesから、**認証トークン不要**で
 ```bash
 cd ~
 sudo apt update && sudo apt install -y wget unzip
-wget -O install-ryoiku-v2.21-wget.sh \\
-  https://raw.githubusercontent.com/kamo0715/ryoiku-install/main/install-ryoiku-v2.21-wget.sh
-bash -n install-ryoiku-v2.21-wget.sh
-bash install-ryoiku-v2.21-wget.sh
+wget -O setup-ryoiku-docker-v2.21-wget.sh \\
+  https://raw.githubusercontent.com/kamo0715/ryoiku-install/main/setup-ryoiku-docker-v2.21-wget.sh
+bash -n setup-ryoiku-docker-v2.21-wget.sh
+bash setup-ryoiku-docker-v2.21-wget.sh
 ```
 
 インストーラーはGitHub Release `v2.21`の`ryoiku-v2.21-docker-lan-test.zip`を直接ダウンロードし、固定したSHA-256 `d68f540010f290b60a3f31e1099a088dd1f063a55a45b445253a86cee1f64bd0`を照合します。失敗時は旧コンテナを削除しません。検証後に展開し、新イメージのビルドに成功した場合のみ、療育アプリと判定できた旧コンテナを更新します。既存の`.env`とDockerボリュームは保持します。
@@ -48,7 +48,7 @@ bash install-ryoiku-v2.21-wget.sh
 Dockerを変更せずダウンロードだけ行う場合：
 
 ```bash
-bash install-ryoiku-v2.21-wget.sh --download-only
+bash setup-ryoiku-docker-v2.21-wget.sh --download-only
 ```
 
 ZIPだけ手動で取得したい場合：
