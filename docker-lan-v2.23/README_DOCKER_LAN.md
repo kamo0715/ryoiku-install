@@ -4,6 +4,18 @@
 
 > **テスト専用**：HTTP通信です。パスワードや支援内容を同じネットワーク上で傍受される可能性があります。**実在の児童・生徒の個人情報、実際の個別支援計画、運用用のAPIキーは入力しないでください。**本番利用はTLS/HTTPS、事業所の情報管理ルール、ネットワーク分離を含む別設計が必要です。
 
+## wget導入（公開GitHub・v2.23）
+
+以前のv2.22までのDocker LANテスト環境を引き継いで、認証トークンなしで最新版を導入します。
+
+```bash
+cd ~
+wget -qO install-ryoiku-v2.23-wget.sh https://raw.githubusercontent.com/kamo0715/ryoiku-install/main/install-ryoiku-v2.23-wget.sh
+bash install-ryoiku-v2.23-wget.sh
+```
+
+`--download-only` でZIPの取得・SHA-256検査のみ実行できます。既存の `ryoiku_lan_test_data` を削除しません。更新前にデータベースと秘密鍵を一緒にバックアップしてください。
+
 ## 1. 使用条件
 
 - Ubuntu Serverなどの**Linux Docker Engine** / Docker Compose v2
