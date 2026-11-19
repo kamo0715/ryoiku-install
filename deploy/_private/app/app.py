@@ -23,7 +23,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from settings import ROOT, APP_SECRET, COOKIE_SECURE, check_settings, LOG_DIR
 from storage import (init_db,init_records,conn,now,create_user,auth,user_by_id,list_users,
   new_child,get_child,all_children,deleted_children,child_history_counts,edit_child,archive_child,restore_child,new_support,get_support,
-  support_history,latest_support,add_plan,get_plan,plans_for_child,save_plan,approve_plan,
+  support_history,latest_support,add_plan,add_plans_batch,get_plan,plans_for_child,save_plan,approve_plan,
   add_record,plan_records,get_setting,set_setting,activity,error,
   change_user_role,change_user_status,reset_user_password,user_exists,
   consume_password_reset_code, set_ai_credential, delete_ai_credential, ai_credential_status)
@@ -33,7 +33,7 @@ from privacy import build_minimal_payload, check_minimal_payload
 from catalog import CATEGORY_GROUPS, CATEGORY_FOCUS, CATEGORY_SAFETY
 from exporters import make_pdf,make_docx,make_xlsx,OFFICIAL,VERIFY
 from text_import import TextImportError, parse_support_text
-from day_flow import FlowError, make_flow_pdf, make_flow_docx, make_flow_xlsx
+from day_flow import FlowError, make_flow_pdf, make_flow_docx, make_flow_xlsx, MAX_TOTAL, MAX_STEPS
 from day_flow_multi import parse_multi_input, MAX_PLANS
 from child_day_flow import make_child_flow_pdf, make_child_flow_docx, make_child_flow_xlsx
 from pdf_text_only import extract_support_pdf, MAX_PDF_BYTES
@@ -576,6 +576,181 @@ async def generate_post(request:Request,cid:int):
             return go(f'/children/{cid}/day-flow?{args}')
         return go(f'/plans/{pid}/day-flow')
     return go(f'/plans/{pid}')
+
+# v2.23: generate multiple NEW curricula in one action, without depending on saved plans.
+# Every selected activity is validated independently; no DB writes occur until
+# all AI calls and output checks finish. One privacy confirmation covers the
+# full, checksum-bound batch. Only approved minimal payloads reach AI providers.
+BATCH_FIELDS=('theme','group_size','edition','preferences','activity_place',
+              'available_materials','custom_activity')
+BATCH_INPUT_FIELDS={
+    'mode':'activity_mode','kind':'kind_code','theme':'theme','duration':'duration',
+    'group_size':'group_size','edition':'edition','preferences':'preferences',
+    'place':'activity_place','materials':'available_materials','custom':'custom_activity',
+}
+
+
+def _batch_editor(request,cid,sup,**ctx):
+    existing=[get_plan(x['id']) for x in plans_for_child(cid)[:40]]
+    return view(request,'generate.html',child=get_child(cid),sup=sup,
+                recent_plans=[p for p in existing if p is not None],max_day_plans=MAX_PLANS,**ctx)
+
+
+def _batch_options(form):
+    """Parse only whitelisted numbered fields; reject invalid/oversized input."""
+    enabled=[]
+    all_posted={}
+    for n in range(1,MAX_PLANS+1):
+        prefix=f'batch_'
+        selected=str(form.get(f'{prefix}enabled_{n}',''))
+        if selected not in ('','yes'):
+            raise ValueError(f'{n}番目の活動選択が不正です。')
+        if selected!='yes':continue
+        data={}
+        all_posted[f'{prefix}enabled_{n}']='yes'
+        for suffix,key in BATCH_INPUT_FIELDS.items():
+            raw=str(form.get(f'{prefix}{suffix}_{n}','')).strip()
+            if len(raw)>2000:
+                raise ValueError(f'{n}番目の入力が長すぎます。')
+            data[key]=raw
+            all_posted[f'{prefix}{suffix}_{n}']=raw
+        mode=data['activity_mode']
+        kind=data['kind_code']
+        if mode not in ACTIVITY_MODES:
+            raise ValueError(f'{n}番目の活動の種類を確認してください。')
+        if mode=='other' and kind not in OTHER_KINDS:
+            raise ValueError(f'{n}番目の活動ジャンルを選び直してください。')
+        if mode=='other' and kind=='other' and not data['custom_activity']:
+            raise ValueError(f'{n}番目の「その他」の活動名を入力してください。')
+        try:duration=int(data.pop('duration'))
+        except (ValueError,TypeError):duration=0
+        if not 15<=duration<=180:
+            raise ValueError(f'{n}番目の活動時間は15～180分にしてください。')
+        data.update(curriculum_context(data))
+        data['completion']='propose'
+        data['duration']=duration
+        enabled.append(data)
+    if not 2<=len(enabled)<=MAX_PLANS:
+        raise ValueError(f'新しく生成する活動を2～{MAX_PLANS}件選択してください。')
+    if sum(d['duration'] for d in enabled)>MAX_TOTAL:
+        raise ValueError(f'1日の活動時間の合計は{MAX_TOTAL}分以下にしてください。')
+    return enabled,all_posted
+
+
+def _finalize_batch_plan(generated,child,sup,opts):
+    """Preserve the single-generation goal checks, completion metadata and notes."""
+    support_data=sup['data'] if sup else {}
+    source_text='\n'.join(str(v or '') for v in support_data.values())
+    unknown=[]
+    for goal in generated['goal_links']:
+        stated=str(goal.get('source_goal','')).strip()
+        if sup and stated and stated not in source_text and stated!='支援目標が未入力':
+            unknown.append(stated[:90])
+            goal['source_goal']='【原文との一致未確認・AI案】'+stated
+    if sup:
+        for key,label in (('short_goal','短期目標'),('long_goal','長期目標')):
+            literal=support_data.get(key,'').strip()
+            if literal and not any(literal in x.get('source_goal','') for x in generated['goal_links']):
+                generated['goal_links'].append({
+                    'source_goal':f'【{label}・原文】{literal}',
+                    'program_link':'AIが具体的な対応を示していないため、職員が関連を記入してください。',
+                    'check':'実施前に個別支援計画と照合し、整合性を確認してください。'})
+    if unknown:
+        generated['note']+='\n注意：一部のAIが示した目標表現は個別支援計画の原文に一致しません。元の資料と照合してください。'
+    generated=attach_completion_metadata(generated,child['data'],support_data,opts,
+                                          has_support=bool(sup))
+    generated['activity_place']=opts['activity_place']
+    generated['available_materials']=opts['available_materials']
+    return generated
+
+
+@app.post('/children/{cid}/generate-batch')
+async def generate_batch_post(request:Request,cid:int):
+    user=actor(request)
+    child=get_child(cid)
+    if not child:raise HTTPException(404)
+    sup=latest_support(cid)
+    f=await checked_form(request)
+    if str(f.get('batch_consented',''))!='yes':
+        return _batch_editor(request,cid,sup,
+                             message='複数活動を生成する前に、情報管理の確認欄をチェックしてください。')
+    try:
+        options,posted=_batch_options(f)
+    except ValueError as exc:
+        return _batch_editor(request,cid,sup,message=str(exc))
+    posted['batch_consented']='yes'
+    provider=get_setting('provider','demo')
+    model=get_setting('model','demo')
+    support_data=sup['data'] if sup else {}
+    # Every activity receives its OWN minimal payload. The choice order is
+    # preserved, but names, original goals, themes and locations never go out.
+    if provider!='demo':
+        try:
+            payloads=[build_minimal_payload(child['data'],support_data,opt) for opt in options]
+            anonymized=[check_minimal_payload(payload) for payload in payloads]
+        except (ValueError,TypeError,KeyError):
+            return _batch_editor(request,cid,sup,
+                message='安全なAI送信内容を作成できなかったため送信を中止しました。')
+        digest=hashlib.sha256(json.dumps({
+            'child_id':cid,'support_id':sup['id'] if sup else None,
+            'provider':provider,'model':model,'options':options,'anonymized':payloads,
+        },ensure_ascii=False,sort_keys=True).encode('utf-8')).hexdigest()
+        approved=(str(f.get('batch_privacy_approved',''))=='yes' and
+                  str(f.get('batch_privacy_review_check',''))=='yes')
+        prev=request.session.get('batch_ai_privacy_review') or {}
+        allowed=(approved and prev.get('cid')==cid and prev.get('digest')==digest
+                 and prev.get('nonce') and
+                 secrets.compare_digest(str(f.get('batch_privacy_nonce','')),prev['nonce'])
+                 and int(prev.get('expires',0))>=int(time.time()))
+        if not allowed:
+            nonce=secrets.token_urlsafe(24)
+            request.session['batch_ai_privacy_review']={
+                'cid':cid,'digest':digest,'nonce':nonce,'expires':int(time.time())+600}
+            return view(request,'batch_privacy_preview.html',child=child,
+                        outgoing_list=anonymized,payload_fields=posted,nonce=nonce,
+                        count=len(options),
+                        message='すべての活動の外部AI送信内容を個別に確認してください。')
+        # A one-time approval must not be reusable on failure or replay.
+        request.session.pop('batch_ai_privacy_review',None)
+    semaphore=asyncio.Semaphore(2)
+
+    async def one_plan(number:int,opt:dict):
+        async with semaphore:
+            gen=validate(await generate(provider,model,child['data'],support_data,opt))
+            duration=opt['duration']
+            if sum(step['minutes'] for step in gen['steps'])!=duration:
+                raise GenerationError('AI_DURATION',f'{number}番目の活動手順の合計時間が一致しません。')
+            if opt['activity_mode']=='other' and re.search(r'minecraft|マインクラフト',gen['title'],re.I):
+                raise GenerationError('AI_CATEGORY',f'{number}番目の活動ジャンルと生成内容が一致しません。')
+            return _finalize_batch_plan(gen,child,sup,opt)
+
+    # Even if one generation fails, wait until all have finished and do not
+    # save any incomplete batch. This also prevents a delayed background write.
+    results=await asyncio.gather(*(one_plan(i+1,opt) for i,opt in enumerate(options)),
+                                 return_exceptions=True)
+    for idx,result in enumerate(results):
+        if isinstance(result,BaseException):
+            if isinstance(result,GenerationError):
+                code,display=result.code,result.display
+            else:
+                code,display='BATCH_ERROR','活動を生成できませんでした。入力・AI設定を確認してください。'
+            error(request.state.request_id,user['id'],'ai_generate_batch',code,display,result)
+            activity(request.state.request_id,user['id'],'ai_generate_batch',cid,
+                     status='failed',detail=f'item={idx+1};code={code}')
+            return _batch_editor(request,cid,sup,
+                message=f'{idx+1}番目の活動生成に失敗しました。保存はしていません。{display}')
+    total_steps=sum(len(p['steps']) for p in results)
+    if total_steps>MAX_STEPS:
+        return _batch_editor(request,cid,sup,message='活動の手順が多すぎます。件数を減らして生成してください。')
+    # Atomic batch write: DB failures cannot leave a half-created daily plan.
+    ids=add_plans_batch(cid,sup['id'] if sup else None,results,provider,model,user['id'])
+    for n,(opt,pid) in enumerate(zip(options,ids),1):
+        activity(request.state.request_id,user['id'],'ai_generate',pid,status='success',
+                 detail=f'batch={n}/{len(options)},provider={provider},category={opt["activity_mode"]}/{opt["kind_code"]}')
+    # One redirect, all the NEW curricula preselected in input order.
+    from urllib.parse import urlencode
+    return go(f'/children/{cid}/day-flow?'+urlencode([('plan_ids',str(pid)) for pid in ids]))
+
 
 @app.get('/plans/{pid}')
 async def plan_page(request:Request,pid:int):

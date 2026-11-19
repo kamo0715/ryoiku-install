@@ -4,6 +4,40 @@
 <h1>療育カリキュラムをAIで作成</h1>
 <p class="muted">活動の種類を選び、個別支援計画の目標・5領域・安全に関する配慮を踏まえて計画案を生成します。</p>
 {% if not sup %}<div class="notice warn"><strong>個別支援計画は未登録です。</strong> 未登録でも下書きを生成できますが、正式な目標との対応は要確認になります。 <a href="/children/{{child.id}}/support/new">個別支援計画を登録</a></div>{% endif %}
+<section class="panel stack" aria-labelledby="batch-generate-title">
+<h2 id="batch-generate-title">新しいカリキュラムを複数まとめて生成</h2>
+<p class="muted">新規作成する活動を2～{{max_day_plans}}件選び、一度の操作でそれぞれのカリキュラム案を生成します。保存済みの計画を選ぶ必要はありません。生成した全活動を選択済みの状態で、1日の支援の流れ編集画面へ進みます。</p>
+<form action="/children/{{child.id}}/generate-batch" method="post" id="batch-generate-form" class="stack">
+<input type="hidden" name="_csrf" value="{{csrf}}">
+{% for i in range(1,max_day_plans+1) %}
+<details class="editing stack" {% if i<=2 %}open{% endif %} data-batch-row>
+<summary><strong>新規活動 {{i}}</strong>　<small>選択して生成対象に追加</small></summary>
+<label class="check"><input type="checkbox" name="batch_enabled_{{i}}" value="yes" {% if i<=2 %}checked{% endif %} data-batch-enabled><span>この活動を新しく生成する</span></label>
+<div class="two">
+<label>活動の種類
+<select name="batch_mode_{{i}}"><option value="minecraft" {% if i==1 %}selected{% endif %}>Minecraft</option><option value="other" {% if i!=1 %}selected{% endif %}>Minecraft以外</option></select></label>
+<label>Minecraft以外のジャンル
+<select name="batch_kind_{{i}}">
+{% for group,items in category_groups.items() %}<optgroup label="{{group}}">{% for code,label in items.items() %}<option value="{{code}}">{{label}}</option>{% endfor %}</optgroup>{% endfor %}
+</select></label>
+<label>活動テーマ（任意）<input name="batch_theme_{{i}}" maxlength="200" placeholder="例：役割分担、タイピング、買い物"></label>
+<label>活動時間（分）<input name="batch_duration_{{i}}" type="number" min="15" max="180" value="30" data-batch-duration></label>
+<label>自由入力の活動ジャンル（「その他」選択時）<input name="batch_custom_{{i}}" maxlength="80" placeholder="例：防災訓練"></label>
+<label>Minecraftの種類（任意）<input name="batch_edition_{{i}}" maxlength="100" placeholder="例：教育版、Java版"></label>
+<label>参加人数・形式（任意）<input name="batch_group_size_{{i}}" maxlength="100" placeholder="個別、小集団"></label>
+<label>活動場所（任意）<input name="batch_place_{{i}}" maxlength="150" placeholder="例：プレイルーム"></label>
+</div>
+<label>材料・機材（任意）<input name="batch_materials_{{i}}" maxlength="300" placeholder="例：端末、画用紙、タイマー"></label>
+<label>希望や配慮（任意）<textarea name="batch_preferences_{{i}}" rows="2" maxlength="1000" placeholder="例：短い工程と休憩を組み合わせる"></textarea></label>
+</details>
+{% endfor %}
+<p class="notice" id="batch-selection-status" role="status" aria-live="polite">最初の2件が選択されています。チェックの順（1→8）で1日の流れに追加します。</p>
+<div class="notice warn"><strong>送信前の情報管理確認</strong><p>外部AIには利用者・学校名・原文・自由入力を送信せず、各活動の分類と安全な支援手掛かりだけを送ります。すべての活動について職員確認が必要です。デモモードでは外部AIへ接続しません。</p></div>
+<label class="check"><input type="checkbox" name="batch_consented" value="yes" required><span>すべての活動の情報管理ルールと外部AIへの送信可否を確認しました。</span></label>
+<button type="submit" class="primary" id="batch-generate-submit">選択した新規カリキュラムをまとめて生成 → 1日の流れへ</button>
+<p class="muted">最大8件。合計720分以内。外部AIは同時最大2件ずつ処理します。生成途中で失敗した場合は、作成途中の計画を保存しません。終了後に職員が確認・編集してください。</p>
+</form>
+</section>
 {% if recent_plans %}
 <section class="panel stack" aria-labelledby="previous-flows">
 <h2 id="previous-flows">保存済みの複数カリキュラムで、1日の流れを作成</h2>
@@ -68,4 +102,5 @@
 </form>
 
 <script src="/static/generate_multi_select.js" defer></script>
+<script src="/static/generate_batch.js" defer></script>
 {% endblock %}

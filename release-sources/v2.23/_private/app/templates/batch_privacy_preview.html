@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% block content %}
+<a class="back" href="/children/{{child.id}}/generate">← 複数カリキュラム生成画面へ</a>
+<h1>複数活動：外部AI送信前の確認</h1>
+<div class="notice warn"><strong>すべての活動を確認してください。</strong><p>{{message}}</p><p>ここには外部送信用に最小化した情報だけを表示します。氏名・学校名・自由入力原文はAIには送られません。法的な匿名加工情報を保証するものではありません。</p></div>
+<p>送信先：<strong>{{provider}} / {{model}}</strong>　／　選択した新規活動：<strong>{{count}}件</strong></p>
+{% for outgoing in outgoing_list %}
+<section class="panel stack"><h2>活動 {{loop.index}}／{{count}} の外部送信本文</h2><pre style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:22rem;overflow:auto">{{outgoing}}</pre></section>
+{% endfor %}
+<form method="post" action="/children/{{child.id}}/generate-batch" class="panel stack">
+<input type="hidden" name="_csrf" value="{{csrf}}">
+<input type="hidden" name="batch_privacy_approved" value="yes">
+<input type="hidden" name="batch_privacy_nonce" value="{{nonce}}">
+{% for name,value in payload_fields.items() %}<input type="hidden" name="{{name}}" value="{{value}}">{% endfor %}
+<label class="check"><input type="checkbox" name="batch_privacy_review_check" value="yes" required><span><strong>{{count}}件すべて</strong>の送信内容を確認し、事業所の情報管理ルール・必要な同意等を確認しました。</span></label>
+<button class="primary" type="submit">確認済みの{{count}}件をまとめてAI生成</button>
+<a href="/children/{{child.id}}/generate">送信せず戻る</a>
+</form>
+{% endblock %}

@@ -1,0 +1,110 @@
+name: Build and publish v2.23 multi-new-curriculum generation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'release-sources/v2.23/**'
+      - 'docker-lan-v2.23/**'
+      - 'scripts/build_v223_release.py'
+      - '.github/workflows/publish-v2.23.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-ryoiku-v2.23
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Rebuild and verify Lolipop full and patch archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/assemble-v2.20.py
+          python3 scripts/build_v223_release.py --out dist/v2.23
+          (cd dist/v2.23 && sha256sum -c SHA256SUMS.txt)
+      - name: Prepare v2.23 Docker and all regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd docker-lan-v2.23
+          ./prepare.sh
+          test "$(cat upload_to_domain_root/_private/app/VERSION)" = '2.23'
+          bash -n prepare.sh install-lan-test.sh remove-old-ryoiku.sh
+          python3 -m py_compile upload_to_domain_root/_private/app/app.py upload_to_domain_root/_private/app/storage.py docker/server.py build_bundle.py
+          python3 tests_docker/test_batch_new_generation.py
+          python3 tests_docker/test_multi_selection_from_builder.py
+          python3 tests_docker/test_generate_to_day_flow.py
+          python3 tests_docker/test_pdf_save.py
+          python3 tests_docker/test_exports.py
+          python3 tests_docker/test_remove_old.py
+          python3 tests_docker/test_guard.py
+      - name: Docker Engine build and LAN-only smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd docker-lan-v2.23
+          ip4="$(ip -4 -o addr show dev "$(ip route show default | awk 'NR==1{for(i=1;i<=NF;i++)if($i=="dev")print $(i+1)}')" scope global | awk 'NR==1{split($4,a,"/");print a[1]}')"
+          cidr="$(IP4="$ip4" python3 -c 'import os,ipaddress;print(ipaddress.ip_network(os.environ["IP4"]+"/24",strict=False))')"
+          printf 'LAN_BIND_IP=%s\nLAN_ALLOWED_CIDR=%s\nRYOIKU_PORT=19183\n' "$ip4" "$cidr" > .env
+          docker compose config -q
+          docker compose up -d --build
+          trap 'docker compose logs --tail=80 || true; docker compose down || true' EXIT
+          for i in $(seq 1 50); do
+            if curl --noproxy '*' -fsS "http://${ip4}:19183/healthz";then break;fi
+            sleep 2
+          done
+          curl --noproxy '*' -fsS "http://${ip4}:19183/first-setup" -o "$RUNNER_TEMP/ryoiku-initial.html"
+          grep -Fq '初回管理者登録' "$RUNNER_TEMP/ryoiku-initial.html"
+          # Prior to first setup, static files intentionally require registration.
+          docker compose exec -T ryoiku grep -Fq 'batch-generate-form' /opt/ryoiku/app/templates/generate.html
+          docker compose exec -T ryoiku grep -Fq 'batch-selection-status' /opt/ryoiku/app/static/generate_batch.js
+          code="$(curl --noproxy '*' -sS -o /dev/null -w '%{http_code}' "http://${ip4}:19183/static/generate_batch.js")"
+          test "$code" = 303
+          docker compose exec -T ryoiku python3 -c 'import app; assert app.app.title'
+          docker compose ps
+      - name: Rebuild self-contained Docker ZIP and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 docker-lan-v2.23/build_bundle.py --output dist/v2.23/ryoiku-v2.23-docker-lan-test.zip
+          (cd dist/v2.23 && sha256sum ryoiku-v2.23-docker-lan-test.zip >> SHA256SUMS.txt)
+          (cd dist/v2.23 && sha256sum -c SHA256SUMS.txt)
+      - name: Publish Release v2.23 (no clobber)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          base=dist/v2.23
+          if gh release view v2.23 --repo "$GH_REPO" >/dev/null 2>&1; then
+            for path in "$base"/*.zip "$base"/SHA256SUMS.txt; do
+              name="$(basename "$path")"
+              if gh release view v2.23 --repo "$GH_REPO" --json assets --jq '.assets[].name' | grep -Fxq "$name";then
+                echo "Keeping existing v2.23 asset: $name"
+              else
+                gh release upload v2.23 "$path" --repo "$GH_REPO"
+              fi
+            done
+          else
+            gh release create v2.23 "$base"/*.zip "$base"/SHA256SUMS.txt \
+              --repo "$GH_REPO" --target "$GITHUB_SHA" \
+              --title 'Ryoiku v2.23 — generate multiple new curricula in one operation' \
+              --notes-file "$base/RELEASE_NOTES.md"
+          fi
+          gh release view v2.23 --repo "$GH_REPO" --json assets --jq '.assets[].name'

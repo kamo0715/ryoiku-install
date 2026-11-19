@@ -334,6 +334,24 @@ def add_plan(cid,support_id,content,provider,model,uid):
                      (cid,support_id,enc(content),provider,model,uid,now()))
         return cur.lastrowid
 
+def add_plans_batch(cid,support_id,contents,provider,model,uid):
+    """Commit all independently generated plans in one SQLite transaction.
+
+    A failure encoding or inserting ANY item rolls back the complete batch.
+    No externally supplied IDs, permissions or existing records are modified.
+    """
+    if not 2 <= len(contents) <= 8:
+        raise ValueError('Batch requires 2-8 curricula')
+    ids=[]
+    with conn() as c:
+        c.execute('BEGIN IMMEDIATE')
+        for content in contents:
+            cur=c.execute('INSERT INTO plans(child_id,support_id,content,provider,model,author_id,created_at) VALUES(?,?,?,?,?,?,?)',
+                          (cid,support_id,enc(content),provider,model,uid,now()))
+            ids.append(cur.lastrowid)
+    return ids
+
+
 def get_plan(pid):
     with conn() as c: r=c.execute('SELECT p.* FROM plans p JOIN children ch ON p.child_id=ch.id WHERE p.id=? AND ch.archived=0',(pid,)).fetchone()
     return ({**dict(r),'data':dec(r['content'])} if r else None)

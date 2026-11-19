@@ -1,0 +1,5 @@
+.env
+upload_to_domain_root/
+__pycache__/
+*.pyc
+ryoiku*.zip
