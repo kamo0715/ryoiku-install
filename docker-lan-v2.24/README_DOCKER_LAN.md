@@ -1,0 +1,186 @@
+# 療育カリキュラム管理 v2.24 — Docker LANテスト版
+
+小学校高学年〜高校生向けの**最新版v2.24**を、Ubuntu Server（Linux / x86_64・Docker Compose v2）で動かすためのテスト環境です。既存のロリポップ用ソースには手を加えません。
+
+> **テスト専用**：HTTP通信です。パスワードや支援内容を同じネットワーク上で傍受される可能性があります。**実在の児童・生徒の個人情報、実際の個別支援計画、運用用のAPIキーは入力しないでください。**本番利用はTLS/HTTPS、事業所の情報管理ルール、ネットワーク分離を含む別設計が必要です。
+
+## v2.24：下書きとスマホ・タブレットUI
+
+下書きは個別支援計画だけに保存され、担当職員ごとに暗号化されています。カリキュラムは完成した計画だけを保存し「要確認」と表示します。作成画面では目的別の3択、1日の流れでは手順の折りたたみ・出力先選択を使用します。既存のDockerデータボリュームとLANの制限は維持します。
+
+## wgetで導入（公開GitHub・トークン不要）
+
+GitHub Releaseへの公開後、`install-ryoiku-v2.24-wget.sh` を用いると、最新のZIPをSHA-256照合した上でインストールできます。
+
+```bash
+cd ~
+wget -qO install-ryoiku-v2.24-wget.sh https://raw.githubusercontent.com/kamo0715/ryoiku-install/main/install-ryoiku-v2.24-wget.sh
+bash install-ryoiku-v2.24-wget.sh
+```
+
+**先にDockerボリューム内のDBと暗号化キーをまとめてバックアップしてください。**
+
+## 1. 使用条件
+
+- Ubuntu Serverなどの**Linux Docker Engine** / Docker Compose v2
+- AMD64 / x86_64 CPU（同梱Python 3.13ライブラリがLinux x86_64用のためARM64不可）
+- Ubuntu Serverが持つ**RFC1918プライベートIPv4**アドレス（例 `192.168.1.50`）
+- LAN内の接続元範囲（例 `192.168.1.0/24`）
+- 任意ポート（標準 `18080`）、ほかのサービスと競合しないこと
+
+Dockerは **Linux hostネットワーク**を使いますが、アプリは指定したLAN IPv4にしかバインドしません。加えて指定CIDR以外の接続元をHTTP 403で拒否します。`X-Forwarded-For` も信用しません。ルーター側ではポート転送・公開を設定しないでください。localhost (`127.0.0.1`) からは接続できません。LAN IPでアクセスします。
+
+## 2. 旧Docker版の自動停止・削除（v2.24 更新版）
+
+新しい `install-lan-test.sh` は先に **v2.24のDockerイメージをビルド**し、成功後に旧コンテナを識別して削除し、新コンテナを起動します。
+
+識別対象は `minecraft-ryoiku-web`、`ryoiku-lan-test`、`ryoiku-curriculum`、`ryoiku-web` です。ただし、名前だけでなくDockerイメージ名かComposeラベルから**療育アプリ本体であることを確認できたものだけ**を削除します。識別に失敗した場合は中止します。関連性を確認できないコンテナ、録画サーバー、Minecraft、Tailscaleは操作しません。
+
+事前確認のみ：
+
+```bash
+./remove-old-ryoiku.sh --check
+```
+
+実際の削除：`install-lan-test.sh` の中で自動実行されます。削除するのは**コンテナ本体のみ**です。既存のDockerボリューム、SQLite DB、旧イメージ、Compose設定、バックアップは消去しません。既存のv2.20以降のLANテスト版で使用したDocker名前付きボリューム `ryoiku_lan_test_data` を継続利用します。別の旧版ボリュームを使っていた場合、そのデータは**自動移行されません**。実際の記録はこのHTTPテスト環境に移さないでください。
+
+既存のコンテナ名が異なる場合は無理に削除せず、`docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'` で確認してください。
+
+## 3. ZIPで配布された場合：インストール
+
+```bash
+unzip ryoiku-v2.24-docker-lan-test.zip
+cd ryoiku-v2.24-docker-lan-test
+chmod +x install-lan-test.sh
+./install-lan-test.sh
+```
+
+`install-lan-test.sh` は既存 `.env` を**上書きしません**。既定ルートのLANアドレスとサブネットを自動判定し、`.env` を生成します。検出結果が誤りの場合は、起動前に `.env` を修正してください。
+
+手動設定：
+
+```bash
+cp .env.example .env
+nano .env
+# LAN_BIND_IP=192.168.1.50
+# LAN_ALLOWED_CIDR=192.168.1.0/24
+# RYOIKU_PORT=18080
+chmod 600 .env
+docker compose up -d --build
+```
+
+`LAN_BIND_IP=0.0.0.0`、公開IP、広すぎるサブネットなどは**起動を拒否**します。
+
+## 4. GitHubのソースから構築する場合
+
+```bash
+git clone https://github.com/kamo0715/ryoiku-install.git
+cd ryoiku-install/docker-lan-v2.24
+./prepare.sh
+./install-lan-test.sh
+```
+
+`prepare.sh` は親リポジトリ内の**公式v2.20完全版ZIP（依存ライブラリ）**をSHA-256照合して展開し、保存済みのv2.24ソースを重ねます。Dockerイメージに含めるアプリのバージョンはv2.24です。
+
+## 5. 初期登録と画面を開く
+
+Ubuntu Serverで、初回登録コードを確認します。
+
+```bash
+docker compose ps
+docker compose exec -T ryoiku cat /data/INITIAL_ADMIN_CODE.txt
+```
+
+例：Ubuntu ServerのLAN IPが `192.168.1.50` の場合は、**同じLANのPCやスマホ**で次を開きます。
+
+```text
+http://192.168.1.50:18080/first-setup
+```
+
+初回登録コード、管理者ユーザー名、**16文字以上**のパスワードを入力します。登録後、初回コードは破棄されます。以後は `/login` からログインします。実在の児童情報ではなく架空のデモデータで検証してください。
+
+## 6. 確認する機能
+
+- 職員ログイン・職員登録・権限
+- 架空の利用者登録、個別支援計画
+- Minecraftとそれ以外の活動、同日複数カリキュラム
+- 職員用、関係機関用、**小学高学年〜高校生向け利用者用**スケジュール
+- PDF / Word / Excel出力、A4横1ページ配置
+- AI送信前の匿名化プレビュー（外部AI APIへの送信は行わない）
+- 操作ログ、復旧、データ保存
+
+```bash
+# 状態を確認
+docker compose ps
+# エラーログ（機密情報を含む可能性があるため共有時に注意）
+docker compose logs --tail=100 ryoiku
+# 動作確認（IPは自分のサーバーに置換）
+curl --noproxy '*' -i http://192.168.1.50:18080/healthz
+```
+
+## 7. 停止・再起動・更新
+
+```bash
+docker compose stop      # 停止（データ維持）
+docker compose start     # 再開
+docker compose down      # コンテナ削除（名前付きボリュームは維持）
+docker compose up -d --build    # 再構築して起動（データ維持）
+```
+
+アプリの秘密鍵とSQLite DBは専用のDockerボリューム `ryoiku_lan_test_data` に保存されます。更新前は**DBとsecrets.envを必ず一緒にバックアップ**してください。絶対に運用データを使わないでください。
+
+**注意：** `docker compose down -v` はデータを完全削除します（テスト環境を初期化する場合にだけ使ってください）。既存の録画サーバー・Minecraft・TailscaleなどのDockerコンテナは操作しません。
+
+## 8. LANアクセスの追加保護（任意）
+
+ホストOSにUFWがあり、**すでに安全に有効化されている場合のみ**、LANだけ許可できます。UFWを初めて有効化するとSSH接続を失う場合があるため、自動では有効化しません。
+
+```bash
+sudo ufw insert 1 allow from 192.168.1.0/24 to 192.168.1.50 port 18080 proto tcp
+sudo ufw insert 2 deny from any to 192.168.1.50 port 18080 proto tcp
+```
+
+LANのアドレスとポートは `.env` と合わせて書き換えてください。Docker `host` ネットワークを使うので、Docker公開ポートのNATによるUFW迂回を避けています。ただし、hostネットワークはネットワーク名前空間の分離を持たないため、テスト用途に限定します。
+
+## 9. 安全設計上の制限
+
+- LANアクセスを制限するだけで、**HTTPSや完全なネットワーク隔離は提供しません**
+- `127.0.0.1` やTailscale IP、パブリックIPでの待ち受けを行いません
+- 外部AIの利用を設定した場合は、送信前匿名化の職員確認を必須としてください
+- 初回登録パスワードや秘密鍵はGitHub、チャット、スクリーンショットに記載しないでください
+- NAS等へボリュームを移す場合、暗号化鍵とDBの両方を保護してください
+- ロリポップ本番環境・その他のDockerサービスには手を加えません
+
+## 検証状況
+
+FastAPIの起動・初期管理者登録・ログイン・静的ファイル・LANアクセス拒否・Hostヘッダー拒否のローカル動作試験を通過しています。Docker Engineの実コンテナ試験は別途GitHub Actionsで実施します。
+
+## PDF転記後の保存不具合の修正（2026-11-19）
+
+PDF・文章の解析結果を表示する画面で、保存フォームの送信先が省略され、解析エンドポイントに再投稿される不具合を修正しました。`docker/overrides/support_form.html` がDockerビルド時に反映されます。保存先は `/children/<ID>/support/new` です。本人・保護者・アセスメントの3チェックと原本確認は引き続き必須です。既存のDockerボリューム（`ryoiku_lan_test_data`）を保持したまま、`docker compose up -d --build` で反映できます。
+
+v2.24完全版ではこの修正を標準で含みます。旧版から更新する場合は、データと設定を事前にバックアップしてください。
+
+### すでに起動している環境の更新
+
+`cd`で以前の`ryoiku-v2.20-docker-lan-test`のフォルダへ移動し、更新版の`fix-pdf-save-local.sh`を置いて`sudo ./fix-pdf-save-local.sh`を実行すると、画面テンプレートのみ安全に差し替え、データボリュームを保持したまま対象コンテナを再ビルドします。最新版ZIPを展開し直す場合は旧データのバックアップを先に実施してください。
+
+## v2.24 カリキュラム作成画面から日別出力
+
+- カリキュラム生成画面から、生成後の移動先を「1日の支援の流れ」に設定できます。
+- 生成済みカリキュラムからも同じ画面のリンクで日別編集画面に進めます。
+- 日別編集画面で、日付・開始時刻・複数活動・休憩・出力先を確認した後、PDF/Word/Excelを出力します。
+- 外部AIの場合も、送信前確認の後に選択した移動先が維持されます。
+- 既存のDB・専用ボリュームは削除しません。テストには架空データを使用してください。
+
+## v2.24 複数カリキュラムを1日の流れへ
+
+利用者の「カリキュラムを生成」画面で、保存済みの計画を複数選択（最大8件）して日別編集画面へ移動します。実施順の並び替え・休憩の挿入・PDF/Word/Excel出力に対応。新しいカリキュラムを作成する場合は既存最大7件を追加できます。氏名・学校名等の送信前確認ルールは変わりません。
+
+公開リポジトリからはトークン不要の `wget` でv2.24完全版を入手できます。
+
+## v2.24 — 複数の新規カリキュラムを1回で作成
+
+「療育カリキュラムをAIで作成」画面に新しい「新しいカリキュラムを複数まとめて生成」セクションが追加されました。活動を2～8件選び、1回の生成操作で新規計画を作成し、そのまま1日の流れにまとめます。すべて生成成功した場合のみ一括保存されます。
+
+既存のデータボリュームを保持して入れ替えます。架空データだけでテストしてください。

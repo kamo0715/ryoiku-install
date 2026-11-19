@@ -1,0 +1,84 @@
+{% extends "base.html" %}{% block content %}<a href="/children/{{child.id}}" class="back">← {{child.data.name}} の詳細</a>
+<div class="topline"><div><div class="eyebrow">SUPPORT PLAN</div><h1>個別支援計画を入力する</h1><p class="muted">{{child.data.name}} の計画を登録します。保存後は新しい版として保管し、過去の内容を上書きしません。</p></div></div>
+{% if draft %}<div class="notice" role="status"><strong>作業中の下書きを再開しました。</strong> 前回保存：{{draft.updated_at[:16]}}。この下書きは正式な個別支援計画ではなく、カリキュラム生成にも使われません。</div>
+<form method="post" action="/children/{{child.id}}/support/draft/delete" class="support-draft-delete" data-confirm="この利用者の自分の下書きを破棄しますか？正式な版は削除されません。"><input type="hidden" name="_csrf" value="{{csrf}}"><button type="submit" class="secondary">自分の下書きを破棄</button></form>
+{% elif previous %}<div class="notice">第{{previous.version}}版の内容を初期入力しています。変更して正式保存すると第{{previous.version+1}}版になります。</div>{% endif %}
+{% if request.query_params.get('draft_saved')=='1' %}<div class="notice" role="status">個別支援計画の下書きを保存しました。正式版は作成していません。</div>{% endif %}
+<details class="panel support-import" {% if ocr_preview %}open{% endif %}><summary id="ocr-heading"><strong>PDF・文章から入力する（任意）</strong></summary><div class="stack">
+<h3>計画書の文字を項目に転記</h3>
+<p class="muted">PDF等からコピーした個別支援計画の文章を貼り付けると、長期・短期目標、本人の意向、保護者の意向、アセスメント、5領域などへ仮転記します。写真・スキャンPDFのOCRはこのロリポップ版にありません。保存前に必ず原本と照合してください。</p>
+<div class="notice">PDFに<strong>文字情報が含まれている</strong>場合はPDFの直接読込も利用できます。画像・スキャンPDFは読み取れません。PDF原本は保存せず、抽出した文章を仮入力します。</div>
+<form method="post" action="/children/{{child.id}}/support/pdf" enctype="multipart/form-data" class="stack">
+<input type="hidden" name="_csrf" value="{{csrf}}">
+<label for="pdf-file">文字を選択できるPDF（最大8MB・12ページ）</label>
+<input type="file" id="pdf-file" name="pdf_file" accept="application/pdf,.pdf" required>
+<button type="submit" class="secondary">PDFの文字を解析して各項目へ仮転記</button>
+</form>
+<form method="post" action="/children/{{child.id}}/support/analyze" class="stack">
+<input type="hidden" name="_csrf" value="{{csrf}}">
+<label for="source-text">原文の解析・再転記（18,000文字以内）</label>
+<textarea id="source-text" name="source_text" rows="5" maxlength="18000" required placeholder="OCR結果や個別支援計画書の文章を貼り付けてください。例：長期目標：集団活動に参加する">{{form_data.get('original_text','')}}</textarea>
+<p class="muted">見出しや表の区切りから解析します。誤った欄に転記された場合は、原文を修正して再解析できます。保存前に原本と必ず照合してください。</p>
+<button type="submit" class="secondary">原文を解析して各項目へ仮転記</button>
+</form>
+{% if ocr_message %}<div class="notice error" role="alert">{{ocr_message}}</div>{% endif %}
+{% if ocr_preview %}
+<div class="notice" role="status"><strong>{% if ocr_kind|default("") == "原文" %}原文からの転記候補を作成しました。{% else %}{{ocr_kind|default("写真")}}の読み取りが終わりました。{% endif %}</strong> {{ocr_count}}項目に入力候補を作成しました。まだデータベースに保存していません。</div>
+<div class="notice warn">
+<strong>重要3項目の転記結果（必ず原文と比較してください）</strong>
+<ul>
+<li>本人の希望・意思：{% if form_data.get('child_intentions') %}候補あり（本文欄を確認）{% else %}<strong>未検出・要確認</strong>{% endif %}</li>
+<li>保護者・家族の意向：{% if form_data.get('family_intentions') %}候補あり（本文欄を確認）{% else %}<strong>未検出・要確認</strong>{% endif %}</li>
+<li>アセスメント・現在の状況：{% if form_data.get('assessment') %}候補あり（本文欄を確認）{% else %}<strong>未検出・要確認</strong>{% endif %}</li>
+</ul>
+<p>本人と保護者の意向が一つの欄にまとめられている場合、発言者が明記されない文章は自動的に振り分けません。未検出でも原文確認が必要です。</p>
+</div>
+{% for warning in ocr_warnings %}<div class="notice warn">{{warning}}</div>{% endfor %}
+{% endif %}
+</div></details>
+<form class="panel stack" method="post" action="/children/{{child.id}}/support/new"><input type="hidden" name="_csrf" value="{{csrf}}">
+<h2>本人の希望・家族の意向・支援目標</h2>
+<div class="two"><label>適用開始日<input type="date" name="period_start" value="{{form_data.get('period_start','')}}"></label>
+<label>適用終了日<input type="date" name="period_end" value="{{form_data.get('period_end','')}}"></label></div>
+
+{% for key,label,help in [
+('child_intentions','本人の希望・意思','本人が実際に希望したこと、得意なこと'),
+('family_intentions','保護者・家族の意向','本人の意向と混同せず別々に記録'),
+('assessment','アセスメント・現在の状況','具体的な観察と既知の情報に基づいて入力'),
+('long_goal','長期目標','個別支援計画に記載された長期目標をできるだけそのまま入力'),
+('short_goal','短期目標','個別支援計画に記載された短期目標をできるだけそのまま入力'),
+('support_policy','総合的な支援の方針','既存の個別支援計画の方針。ここで新規にAIが決定しない') ] %}
+<label>{{label}}<small>{{help}}</small><textarea name="{{key}}" rows="3">{{form_data.get(key,'')}}</textarea></label>{% endfor %}
+<details class="advanced-options"><summary><strong>5領域の支援内容を入力する（必要に応じて）</strong></summary><h2 class="form-heading">5領域の視点からの支援内容</h2>
+<p class="muted">該当する支援計画上の内容を入力。5つを無理に均等に設定しなくて構いません。</p>
+{% for key,label in [('domain_health','健康・生活'),('domain_motor','運動・感覚'),('domain_cognition','認知・行動'),('domain_language','言語・コミュニケーション'),('domain_social','人間関係・社会性')] %}
+<label>{{label}}<textarea name="{{key}}" rows="2">{{form_data.get(key,'')}}</textarea></label>{% endfor %}
+</details><details class="advanced-options"><summary><strong>配慮事項・家族支援などを入力する</strong></summary><h2 class="form-heading">具体的配慮・その他の支援</h2>
+{% for key,label in [('accommodation','合理的配慮・安全面・避けるべき活動'),('family_support','家族支援の方針'),('transition_support','移行支援の方針'),('community_support','地域支援・地域連携の内容'),('other_notes','その他の職員間共有事項')] %}
+<label>{{label}}<textarea name="{{key}}" rows="3">{{form_data.get(key,'')}}</textarea></label>{% endfor %}
+</details><details class="advanced-options"><summary><strong>元の計画書の全文を記録する（任意）</strong></summary><h2 class="form-heading">元の個別支援計画の文章</h2>
+<label>原文の貼り付け（任意）<small>既存の計画本文を貼り付けられます。内容に氏名・連絡先等がある場合は外部AI送信前に必ず確認してください。入力した原文は版ごとに暗号化して保管します。</small>
+<textarea name="original_text" rows="8" placeholder="個別支援計画の該当する内容を貼り付け">{{form_data.get('original_text','')}}</textarea></label></details>
+<div class="notice">内容が分かる項目だけ入力して保存できます。空欄は「未入力」として保持され、AIが正式な個別支援計画の内容を捏造して補完することはありません。</div>
+<div class="notice warn">この画面は既存の個別支援計画を記録する機能です。正式な個別支援計画を作成・改訂・承認する法定業務の代行ではありません。</div>
+{% if ocr_preview %}<input type="hidden" name="ocr_preview_token" value="{{ocr_token}}">
+<div class="notice warn" role="group" aria-label="重要3項目の原本照合">
+<strong>原本照合チェック（3項目すべて必須）</strong>
+<label><input type="checkbox" name="review_child_intentions" value="yes" required> 本人の希望・意思：本人自身の発言・希望と一致するか、記載がないことを確認しました。</label>
+<label><input type="checkbox" name="review_family_intentions" value="yes" required> 保護者・家族の意向：本人の希望と混同していないか、記載がないことを確認しました。</label>
+<label><input type="checkbox" name="review_assessment" value="yes" required> アセスメント・現在の状況：観察事実だけか、原本に記載がないことを確認しました。</label>
+</div>
+
+<label class="notice warn"><input type="checkbox" name="ocr_verified" value="yes" required>
+<strong>計画書の原本と照合し、氏名・期間・全ての支援目標・配慮事項を確認しました。</strong> 誤認識は手修正した上で保存します。</label>
+{% elif draft_needs_review %}
+<input type="hidden" name="draft_review_verified" value="yes">
+<div class="notice warn"><strong>下書きに含まれる転記内容の原本照合が必要です。</strong><p>正式版として登録する前に、必ず計画書の原文に戻って確認してください。</p>
+{% for key,label in [('review_child_intentions','本人の希望・意思'),('review_family_intentions','保護者・家族の意向'),('review_assessment','アセスメント')] %}
+<label class="check"><input type="checkbox" name="{{key}}" value="yes" required>{{label}}を原本と照合しました。</label>{% endfor %}</div>
+{% endif %}
+<div class="workflow-submit support-save-actions"><button class="primary" type="submit">確認して正式版として保存</button>
+<button class="secondary" type="submit" formnovalidate formaction="/children/{{child.id}}/support/draft">下書き保存（この計画のみ）</button></div>
+<p class="muted">下書きは個別支援計画専用です。保存しても正式版の履歴やカリキュラムには反映されません。</p>
+<a href="/children/{{child.id}}" class="button secondary">利用者画面へ戻る</a>
+</form>{% endblock %}

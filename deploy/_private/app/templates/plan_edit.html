@@ -1,5 +1,5 @@
 {% extends "base.html" %}{% block content %}<a href="/plans/{{plan.id}}" class="back">← 計画書に戻る</a><div class="eyebrow">HUMAN REVIEW</div><h1>計画書の編集と確認</h1>
-<p class="muted">AIの文章をそのまま使わず、個別支援計画に照らして校正できます。編集すると承認状態は下書きに戻ります。</p>
+<p class="muted">AIの文章をそのまま使わず、個別支援計画に照らして校正できます。編集後は「保存済み・職員確認前」になります。必要に応じて再確認してください。</p>
 <form method="post" class="panel stack"><input type="hidden" name="_csrf" value="{{csrf}}">
 {% for key,label in [('title','活動タイトル'),('overview','活動のねらい'),('family_support','家族支援'),('transition_support','移行支援'),('community_support','地域支援・連携'),('note','注意・要確認事項')] %}
 <label>{{label}}<textarea name="{{key}}" rows="{{2 if key=='title' else 4}}">{{plan.data[key]}}</textarea></label>{% endfor %}

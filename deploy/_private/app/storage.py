@@ -53,9 +53,16 @@ def init_db():
         CREATE TABLE IF NOT EXISTS plans(id INTEGER PRIMARY KEY, child_id INTEGER NOT NULL,
           support_id INTEGER, content TEXT NOT NULL, provider TEXT NOT NULL,
           model TEXT NOT NULL, author_id INTEGER NOT NULL, created_at TEXT NOT NULL,
-          status TEXT NOT NULL DEFAULT 'draft', approved_by INTEGER, approved_at TEXT,
+          status TEXT NOT NULL DEFAULT 'saved', approved_by INTEGER, approved_at TEXT,
           review_note TEXT NOT NULL DEFAULT '', revised_at TEXT,
           FOREIGN KEY(child_id) REFERENCES children(id), FOREIGN KEY(support_id) REFERENCES support_plans(id));
+        CREATE TABLE IF NOT EXISTS support_drafts(
+          child_id INTEGER NOT NULL, author_id INTEGER NOT NULL,
+          payload TEXT NOT NULL, requires_review INTEGER NOT NULL DEFAULT 0,
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY(child_id,author_id),
+          FOREIGN KEY(child_id) REFERENCES children(id),
+          FOREIGN KEY(author_id) REFERENCES users(id));
         CREATE TABLE IF NOT EXISTS password_reset_codes(
           user_id INTEGER PRIMARY KEY, token_hash TEXT NOT NULL,
           expires_at INTEGER NOT NULL, failed_attempts INTEGER NOT NULL DEFAULT 0,
@@ -69,6 +76,9 @@ def init_db():
         c.execute("INSERT OR IGNORE INTO settings(key,value) VALUES('model','demo')")
     migrate_support_nullable()
     migrate_users_session_version()
+    # Previous activity 'drafts' were already committed plans, not unfinished work.
+    # Only change the label; preserve all activity records, approvals and IDs.
+    with conn() as c: c.execute("UPDATE plans SET status='saved' WHERE status='draft'")
 
 
 
@@ -92,7 +102,7 @@ def migrate_support_nullable():
             sql=("CREATE TABLE plans_new(id INTEGER PRIMARY KEY, child_id INTEGER NOT NULL, "
                  "support_id INTEGER, content TEXT NOT NULL, provider TEXT NOT NULL, "
                  "model TEXT NOT NULL, author_id INTEGER NOT NULL, created_at TEXT NOT NULL, "
-                 "status TEXT NOT NULL DEFAULT 'draft', approved_by INTEGER, approved_at TEXT, "
+                 "status TEXT NOT NULL DEFAULT 'saved', approved_by INTEGER, approved_at TEXT, "
                  "review_note TEXT NOT NULL DEFAULT '', revised_at TEXT, "
                  "FOREIGN KEY(child_id) REFERENCES children(id), "
                  "FOREIGN KEY(support_id) REFERENCES support_plans(id))")
@@ -309,11 +319,34 @@ def restore_child(cid):
         return c.execute('UPDATE children SET archived=0,updated_at=? WHERE id=? AND archived=1',
                          (now(),cid)).rowcount
 
+def save_support_draft(cid,payload,uid,requires_review=False):
+    """Private encrypted working copy. Never part of the official version history."""
+    with conn() as c:
+        c.execute('''INSERT INTO support_drafts(child_id,author_id,payload,requires_review,updated_at)
+                     VALUES(?,?,?,?,?) ON CONFLICT(child_id,author_id) DO UPDATE SET
+                     payload=excluded.payload,requires_review=excluded.requires_review,
+                     updated_at=excluded.updated_at''',
+                  (cid,uid,enc(payload),int(bool(requires_review)),now()))
+
+def get_support_draft(cid,uid):
+    with conn() as c:
+        r=c.execute('SELECT payload,requires_review,updated_at FROM support_drafts WHERE child_id=? AND author_id=?',
+                    (cid,uid)).fetchone()
+    return ({'data':dec(r['payload']),'requires_review':bool(r['requires_review']),
+             'updated_at':r['updated_at']} if r else None)
+
+def delete_support_draft(cid,uid):
+    with conn() as c:
+        return c.execute('DELETE FROM support_drafts WHERE child_id=? AND author_id=?',
+                         (cid,uid)).rowcount
+
 def new_support(cid,payload,uid):
     with conn() as c:
         version=c.execute('SELECT COALESCE(MAX(version),0)+1 AS v FROM support_plans WHERE child_id=?',(cid,)).fetchone()['v']
         cur=c.execute('INSERT INTO support_plans(child_id,version,payload,author_id,created_at) VALUES(?,?,?,?,?)',
                       (cid,version,enc(payload),uid,now()))
+        # Publishing clears only the author's private working copy atomically.
+        c.execute('DELETE FROM support_drafts WHERE child_id=? AND author_id=?',(cid,uid))
         return cur.lastrowid,version
 
 def get_support(sid):
@@ -361,7 +394,7 @@ def plans_for_child(cid):
     return [{**{k:v for k,v in dict(x).items() if k!='content'}, 'curriculum_label':dec(x['content']).get('curriculum_label','Minecraft')} for x in rows]
 
 def save_plan(pid,content,note):
-    with conn() as c: c.execute("UPDATE plans SET content=?,review_note=?,status='draft',approved_by=NULL,approved_at=NULL,revised_at=? WHERE id=?",
+    with conn() as c: c.execute("UPDATE plans SET content=?,review_note=?,status='saved',approved_by=NULL,approved_at=NULL,revised_at=? WHERE id=?",
                                 (enc(content),note,now(),pid))
 
 def approve_plan(pid,uid):

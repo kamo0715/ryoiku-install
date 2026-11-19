@@ -35,7 +35,7 @@ def descriptors(plan,child,support):
     return [
       ('カリキュラム分類',('Minecraft以外 / '+program_name(plan)) if p.get('activity_mode')=='other' else 'Minecraft'),
       ('タイトル',p['title']),('利用者名',child['data']['name']),('個別支援計画の版',support_label),
-      ('状態','職員確認済' if plan['status']=='approved' else '未承認・下書き'),
+      ('状態','職員確認済' if plan['status']=='approved' else '保存済み・職員確認前'),
       ('作成日',plan['created_at'][:10]),('利用したモデル',plan['provider']+' / '+plan['model']),
       ('活動のねらい',p['overview']),('個別支援計画：長期目標',support_data.get('long_goal') or '未入力・要確認'),
       ('個別支援計画：短期目標',support_data.get('short_goal') or '未入力・要確認'),

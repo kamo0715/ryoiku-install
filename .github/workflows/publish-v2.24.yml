@@ -1,0 +1,128 @@
+name: Build and publish v2.24 touch-friendly UX and support-only drafts
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'release-sources/v2.24/**'
+      - 'docker-lan-v2.24/**'
+      - 'scripts/build_v224_release.py'
+      - '.github/workflows/publish-v2.24.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-ryoiku-v2.24
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Rebuild and verify Lolipop v2.24 full and patch archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/assemble-v2.20.py
+          python3 scripts/build_v224_release.py --out dist/v2.24
+          (cd dist/v2.24 && sha256sum -c SHA256SUMS.txt)
+
+      - name: Assemble v2.24 Docker context and run regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd docker-lan-v2.24
+          ./prepare.sh
+          test "$(cat upload_to_domain_root/_private/app/VERSION)" = '2.24'
+          bash -n prepare.sh install-lan-test.sh remove-old-ryoiku.sh
+          python3 -m py_compile upload_to_domain_root/_private/app/app.py upload_to_domain_root/_private/app/storage.py docker/server.py build_bundle.py
+          for js in upload_to_domain_root/static/curriculum_workflow.js upload_to_domain_root/static/generate_batch.js upload_to_domain_root/static/generate_multi_select.js upload_to_domain_root/static/day_flow_audience.js; do
+            node --check "$js"
+          done
+          python3 tests_docker/test_batch_new_generation.py
+          python3 tests_docker/test_multi_selection_from_builder.py
+          python3 tests_docker/test_generate_to_day_flow.py
+          python3 tests_docker/test_pdf_save.py
+          python3 tests_docker/test_support_drafts_and_mobile_ui.py
+          python3 tests_docker/test_exports.py
+          python3 tests_docker/test_remove_old.py
+          python3 tests_docker/test_guard.py
+          cmp docker/overrides/support_form.html upload_to_domain_root/_private/app/templates/support_form.html
+
+      - name: Docker Engine build and LAN-only smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd docker-lan-v2.24
+          ip4="$(ip -4 -o addr show dev "$(ip route show default | awk 'NR==1{for(i=1;i<=NF;i++)if($i=="dev")print $(i+1)}')" scope global | awk 'NR==1{split($4,a,"/");print a[1]}')"
+          cidr="$(IP4="$ip4" python3 -c 'import os,ipaddress;print(ipaddress.ip_network(os.environ["IP4"]+"/24",strict=False))')"
+          printf 'LAN_BIND_IP=%s\nLAN_ALLOWED_CIDR=%s\nRYOIKU_PORT=19191\n' "$ip4" "$cidr" > .env
+          docker compose config -q
+          docker compose up -d --build
+          trap 'docker compose logs --tail=80 || true; docker compose down || true' EXIT
+          ready=0
+          for i in $(seq 1 50); do
+            if curl --noproxy '*' -fsS "http://${ip4}:19191/healthz";then ready=1;break;fi
+            sleep 2
+          done
+          test "$ready" -eq 1
+          curl --noproxy '*' -fsS "http://${ip4}:19191/first-setup" -o "$RUNNER_TEMP/ryoiku-initial.html"
+          grep -Fq '初回管理者登録' "$RUNNER_TEMP/ryoiku-initial.html"
+          docker compose exec -T ryoiku grep -Fq '下書き保存（この計画のみ）' /opt/ryoiku/app/templates/support_form.html
+          docker compose exec -T ryoiku grep -Fq 'data-workflow-choice' /opt/ryoiku/app/templates/generate.html
+          docker compose exec -T ryoiku grep -Fq 'curriculum-workflow' /opt/ryoiku/app/static/curriculum_workflow.js || \
+            docker compose exec -T ryoiku grep -Fq 'workflow' /opt/ryoiku/app/static/curriculum_workflow.js
+          docker compose exec -T ryoiku python3 -c 'import app,storage; assert app.app.title'
+          docker compose ps
+
+      - name: Package complete Docker ZIP and append SHA256
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 docker-lan-v2.24/build_bundle.py --output dist/v2.24/ryoiku-v2.24-docker-lan-test.zip
+          (cd dist/v2.24 && sha256sum ryoiku-v2.24-docker-lan-test.zip >> SHA256SUMS.txt)
+          (cd dist/v2.24 && sha256sum -c SHA256SUMS.txt)
+          python3 - <<'PY_TESTZIP'
+          from zipfile import ZipFile
+          with ZipFile('dist/v2.24/ryoiku-v2.24-docker-lan-test.zip') as z:
+            assert z.testzip() is None
+            assert '下書き保存（この計画のみ）'.encode('utf-8') in z.read('ryoiku-v2.24-docker-lan-test/upload_to_domain_root/_private/app/templates/support_form.html')
+          PY_TESTZIP
+
+      - name: Publish Release v2.24 (keep existing assets)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          base=dist/v2.24
+          if gh release view v2.24 --repo "$GH_REPO" >/dev/null 2>&1; then
+            for path in "$base"/*.zip "$base"/SHA256SUMS.txt; do
+              name="$(basename "$path")"
+              if gh release view v2.24 --repo "$GH_REPO" --json assets --jq '.assets[].name' | grep -Fxq "$name";then
+                echo "Keeping existing v2.24 asset: $name"
+              else
+                gh release upload v2.24 "$path" --repo "$GH_REPO"
+              fi
+            done
+          else
+            gh release create v2.24 "$base"/*.zip "$base"/SHA256SUMS.txt \
+              --repo "$GH_REPO" --target "$GITHUB_SHA" \
+              --title 'Ryoiku v2.24 — support-only drafts and touch-friendly mobile UX' \
+              --notes-file "$base/RELEASE_NOTES.md"
+          fi
+          gh release view v2.24 --repo "$GH_REPO" --json assets --jq '.assets[].name'

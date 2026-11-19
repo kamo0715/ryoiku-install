@@ -147,7 +147,7 @@ def _meta(plan,child,flow):
             source=f'承認済み計画 {len(selected)}件'
     else:
         title=(plan['data'].get('title') or '活動計画') if audience=='staff' else (flow['shared_title'] or '活動支援の流れ')
-        source=f'計画 #{plan["id"]}・'+('確認済' if plan['status']=='approved' else '未承認・下書き')
+        source=f'計画 #{plan["id"]}・'+('確認済' if plan['status']=='approved' else '保存済み・職員確認前')
     return [('区分','職員用（内部共有）' if audience=='staff' else '関係機関用（共有内容確認済）'),
             ('活動名',title),('対象利用者',child.get('data',{}).get('name','未設定') if audience=='staff' else '共有先で必要に応じて記入'),
             ('実施日',flow['event_date'] or '未記入'),('活動場所',flow['location'] or '未記入'),

@@ -44,5 +44,13 @@
       update();
     }
   });
+  const search = document.getElementById('saved-curriculum-search');
+  search?.addEventListener('input', () => {
+    const query = search.value.trim().toLocaleLowerCase('ja');
+    items().forEach(item => {
+      // An already-selected item must remain visible even when filtered.
+      item.hidden = !checkbox(item).checked && !item.textContent.toLocaleLowerCase('ja').includes(query);
+    });
+  });
   update();
 })();

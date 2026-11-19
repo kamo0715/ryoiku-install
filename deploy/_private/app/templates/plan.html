@@ -1,15 +1,15 @@
 {% extends "base.html" %}{% block content %}<a href="/children/{{child.id}}" class="back">← {{child.data.name}} の詳細</a>
 <div class="topline"><div><div class="eyebrow">ACTIVITY PLAN #{{plan.id}} ・ {{('SUPPORT PLAN v' ~ sup.version) if sup else 'SUPPORT PLAN UNREGISTERED'}}</div><h1>{{plan.data.title}}</h1><p class="muted">対象：{{child.data.name}} / 作成：{{plan.created_at[:10]}} / AI：{{plan.provider}} {{plan.model}}</p></div>
-<span class="status {{'approved' if plan.status=='approved' else 'draft'}}">{{'職員確認済' if plan.status=='approved' else '未承認・下書き'}}</span></div>
+<span class="status {{'approved' if plan.status=='approved' else 'saved'}}">{{'職員確認済み' if plan.status=='approved' else '保存済み・職員確認前'}}</span></div>
 {% if plan.provider=='demo' %}<div class="notice warn">この計画はデモモードのサンプルです。実際の療育で使用しないでください。</div>{% endif %}
-<div class="notice"><strong>参照した個別支援計画：</strong>{% if sup %}第{{sup.version}}版（{{sup.created_at[:10]}}）。<a href="/children/{{child.id}}/support/{{sup.id}}">原文を確認</a>{% else %}未登録です。一般的な活動案の下書きであり、正式な目標との照合が必要です。{% endif %}
+<div class="notice"><strong>参照した個別支援計画：</strong>{% if sup %}第{{sup.version}}版（{{sup.created_at[:10]}}）。<a href="/children/{{child.id}}/support/{{sup.id}}">原文を確認</a>{% else %}未登録です。一般的な活動案であり、正式な目標との照合が必要です。{% endif %}
 <p class="muted">以下は自動生成された活動案です。本人・家族の意向との整合性、安全性、実現可能性を必ず職員が確認してください。</p></div>
 <div class="actions"><a href="/plans/{{plan.id}}/day-flow" class="button primary">1日の支援の流れを作成（職員・関係機関・利用者用）</a><a href="/plans/{{plan.id}}/edit" class="button secondary">✎ 計画書を編集</a>
 <a class="button primary" href="/plans/{{plan.id}}/export/pdf?view=1" target="_blank" rel="noopener">PDFをブラウザで表示</a><a class="button secondary" href="/plans/{{plan.id}}/export/pdf">PDFを保存</a><a class="button primary" href="/plans/{{plan.id}}/export/docx">Word（DOCX）</a><a class="button primary" href="/plans/{{plan.id}}/export/xlsx">Excel（XLSX）</a>
 {% if user.role in ['admin','reviewer'] and plan.status!='approved' and plan.provider!='demo' %}
 <form method="post" action="/plans/{{plan.id}}/approve" data-confirm="個別支援計画との整合性、本人の希望、活動上の安全を確認しましたか？"><input type="hidden" name="_csrf" value="{{csrf}}">{% if plan.data.get('missing_inputs') %}<label class="check"><input type="checkbox" name="review_missing" value="yes" required> 未入力・AI提案部分を確認した（正式目標など未入力のままでは承認できません）</label>{% endif %}<button class="success">内容を確認済みにする</button></form>{% endif %}</div>
 <section class="panel"><h2>活動分類とテーマ</h2><div class="featureline"><span class="pill">{{"Minecraft以外" if plan.data.get("activity_mode")=="other" else "Minecraft"}}</span>{% if plan.data.get("curriculum_group") %}<span class="pill light">{{plan.data.curriculum_group}}</span>{% endif %}<strong>{{plan.data.get("curriculum_label", "Minecraft")}}</strong></div><p class="muted">過去のMinecraft計画は引き続き同じ分類で表示します。</p></section><section class="panel"><h2>未入力項目・AI補完の確認</h2>
-<p class="muted">未入力の項目があっても活動案の下書きを生成できます。空欄の元データを書き換えず、AIの仮案と区別します。</p>
+<p class="muted">未入力の項目があっても活動案を生成できます。空欄の元データを書き換えず、AIの仮案と区別します。</p>
 {% if plan.data.get('missing_inputs') %}<div class="notice warn"><strong>要確認：{{plan.data.missing_inputs|length}}項目</strong>（正式な支援内容として自動確定しません）</div>
 <div class="table-scroll"><table><thead><tr><th>区分</th><th>未入力項目</th><th>扱い</th></tr></thead><tbody>{% for m in plan.data.missing_inputs %}<tr><td>{{m.section}}</td><td>{{m.label}}</td><td>{{m.handling}}</td></tr>{% endfor %}</tbody></table></div>{% else %}<p>主要入力項目の未入力は検出されませんでした。</p>{% endif %}
 {% if plan.data.get('ai_assumptions') %}<h3>AIが提案した補完内容</h3>{% for a in plan.data.ai_assumptions %}<div class="mapping"><strong>{{a.field}}：AI提案</strong><p>{{a.proposal}}</p><p class="muted">根拠・注意：{{a.reason}}</p></div>{% endfor %}{% endif %}</section>

@@ -204,3 +204,84 @@ code { background: var(--accent-soft); border-radius: .3rem; padding: .14rem .33
   .panel,.card { box-shadow: none; break-inside: avoid; border: 1px solid #777; }
   body { background: #fff; color: #000; }
 }
+
+/* v2.24 simplified touch-first curriculum workflow; no framework required. */
+.status.saved { background:#e5f0f7; color:#184e6d; }
+.workflow-header { margin-block-end:1.2rem; max-inline-size:52rem; }
+.workflow-header p { margin:0; color:var(--muted); }
+.workflow-switcher { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.75rem; margin-block:1.25rem 1.6rem; }
+.workflow-choice { padding:1rem .7rem; border:2px solid var(--line); border-radius:.95rem; background:var(--surface); color:var(--ink); text-align:left; min-block-size:88px; }
+.workflow-choice strong { display:block; font-size:1.05rem; line-height:1.35; }
+.workflow-choice small { display:block; color:var(--muted); font-size:.78rem; margin-top:.35rem; }
+.workflow-choice[aria-pressed="true"] { border-color:var(--accent); background:var(--accent-soft); box-shadow:inset 0 0 0 1px var(--accent); }
+.workflow-choice[aria-pressed="true"] strong { color:var(--accent-strong); }
+.workflow-panel { min-inline-size:0; }
+.workflow-panel .panel { max-inline-size:100%; }
+.section-heading { display:flex; gap:.8rem; align-items:center; }
+.section-heading h2,.section-heading p { margin:0; }
+.step-bubble,.batch-number { inline-size:2.2rem; block-size:2.2rem; border-radius:50%; background:var(--accent); color:#fff; display:inline-grid; place-items:center; flex:none; font-weight:800; }
+.batch-activity-card { padding:.9rem; gap:.75rem; }
+.batch-activity-card > summary { list-style:none; display:flex; flex-wrap:wrap; align-items:center; gap:.6rem; min-block-size:44px; cursor:pointer; }
+.batch-activity-card > summary::-webkit-details-marker { display:none; }
+.batch-summary small { margin-inline-start:auto; color:var(--muted); }
+.batch-enable { padding:.3rem 0; }
+.batch-remove { align-self:flex-start; }
+.advanced-options { border:1px solid var(--line); border-radius:.7rem; padding:.7rem .9rem; background:var(--surface-2); margin-block:.55rem; }
+.advanced-options > summary { min-block-size:44px; align-content:center; cursor:pointer; font-weight:700; }
+.advanced-options[open] > summary { margin-block-end:.8rem; }
+.advanced-options :where(label, .two, .editing) { margin-block-end:.7rem; }
+.workflow-submit { display:flex; gap:.65rem; align-items:stretch; margin-block:1.2rem .25rem; }
+.workflow-submit > :is(button, .button) { flex:1; }
+.compact-notice { margin-block:.5rem 1rem; }
+.curriculum-select-item .actions { margin:0; }
+.support-draft-delete { margin-block:0 1.25rem; }
+.audience-selector { border:0; padding:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.65rem; }
+.audience-selector legend { padding:0; margin-block-end:.65rem; font-weight:750; }
+.audience-option { display:flex; gap:.65rem; align-items:center; border:2px solid var(--line); border-radius:.8rem; padding:.9rem; background:var(--surface); cursor:pointer; min-block-size:76px; }
+.audience-option:has(input:checked) { border-color:var(--accent); background:var(--accent-soft); }
+.audience-option input { inline-size:1.25rem; block-size:1.25rem; flex:none; }
+.audience-option small { display:block; color:var(--muted); font-weight:400; }
+.audience-fields { border-block-start:1px solid var(--line); padding-block-start:1rem; }
+.export-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); }
+.day-plan-block .day-step-toggle { margin-block-start:.7rem; }
+#day-flow-preview { white-space:pre-wrap; }
+@media (max-width:760px) {
+  .workflow-switcher { gap:.4rem; }
+  .workflow-choice { min-block-size:84px; padding:.7rem .4rem; }
+  .workflow-choice strong { font-size:.91rem; }
+  .workflow-choice small { font-size:.72rem; }
+  .audience-selector { grid-template-columns:1fr; }
+  .audience-option { min-block-size:60px; }
+  .workflow-submit { flex-direction:column; gap:.55rem; }
+  .workflow-submit > button { inline-size:100%; min-block-size:48px; }
+  .export-actions { display:grid; grid-template-columns:1fr; }
+  .day-plan-order { display:flex; flex-wrap:wrap; }
+  .day-plan-order button { min-inline-size:72px; }
+  .curriculum-select-item .actions { gap:.4rem; }
+  .curriculum-select-item .actions > :is(button, a) { min-inline-size:0; }
+  .support-save-actions { flex-direction:column; }
+  .batch-summary small { font-size:.7rem; }
+}
+@media (max-width:380px) {
+  .workflow-choice strong { font-size:.83rem; }
+  .workflow-choice small { font-size:.66rem; }
+  .workflow-choice { padding:.6rem .35rem; }
+  .section-heading { align-items:flex-start; }
+  .editing { padding:.7rem; }
+}
+@media (pointer:coarse) {
+  .workflow-choice,.batch-activity-card > summary,.advanced-options > summary,.audience-option { min-block-size:48px; }
+  :is(input,select,textarea) { font-size:16px; }
+}
+@media (prefers-color-scheme:dark) {
+  .status.saved { background:#23485b; color:#d0edf5; }
+  .workflow-choice { background:var(--surface); }
+  .workflow-choice[aria-pressed="true"],.audience-option:has(input:checked) { background:#244657; }
+}
+
+@media (max-width: 680px) {
+  .workflow-switcher { grid-template-columns:1fr; gap:.4rem; }
+  .workflow-choice { min-block-size:64px; display:flex; align-items:center; justify-content:space-between; gap:.5rem; padding:.7rem 1rem; }
+  .workflow-choice strong { font-size:1rem; }
+  .workflow-choice small { text-align:right; margin:0; font-size:.8rem; }
+}

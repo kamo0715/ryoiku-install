@@ -1,0 +1,43 @@
+{% extends "base.html" %}{% block content %}<a href="/children/{{child.id}}" class="back">← {{child.data.name}} の詳細</a>
+<div class="topline"><div><div class="eyebrow">ACTIVITY PLAN #{{plan.id}} ・ {{('SUPPORT PLAN v' ~ sup.version) if sup else 'SUPPORT PLAN UNREGISTERED'}}</div><h1>{{plan.data.title}}</h1><p class="muted">対象：{{child.data.name}} / 作成：{{plan.created_at[:10]}} / AI：{{plan.provider}} {{plan.model}}</p></div>
+<span class="status {{'approved' if plan.status=='approved' else 'saved'}}">{{'職員確認済み' if plan.status=='approved' else '保存済み・職員確認前'}}</span></div>
+{% if plan.provider=='demo' %}<div class="notice warn">この計画はデモモードのサンプルです。実際の療育で使用しないでください。</div>{% endif %}
+<div class="notice"><strong>参照した個別支援計画：</strong>{% if sup %}第{{sup.version}}版（{{sup.created_at[:10]}}）。<a href="/children/{{child.id}}/support/{{sup.id}}">原文を確認</a>{% else %}未登録です。一般的な活動案であり、正式な目標との照合が必要です。{% endif %}
+<p class="muted">以下は自動生成された活動案です。本人・家族の意向との整合性、安全性、実現可能性を必ず職員が確認してください。</p></div>
+<div class="actions"><a href="/plans/{{plan.id}}/day-flow" class="button primary">1日の支援の流れを作成（職員・関係機関・利用者用）</a><a href="/plans/{{plan.id}}/edit" class="button secondary">✎ 計画書を編集</a>
+<a class="button primary" href="/plans/{{plan.id}}/export/pdf?view=1" target="_blank" rel="noopener">PDFをブラウザで表示</a><a class="button secondary" href="/plans/{{plan.id}}/export/pdf">PDFを保存</a><a class="button primary" href="/plans/{{plan.id}}/export/docx">Word（DOCX）</a><a class="button primary" href="/plans/{{plan.id}}/export/xlsx">Excel（XLSX）</a>
+{% if user.role in ['admin','reviewer'] and plan.status!='approved' and plan.provider!='demo' %}
+<form method="post" action="/plans/{{plan.id}}/approve" data-confirm="個別支援計画との整合性、本人の希望、活動上の安全を確認しましたか？"><input type="hidden" name="_csrf" value="{{csrf}}">{% if plan.data.get('missing_inputs') %}<label class="check"><input type="checkbox" name="review_missing" value="yes" required> 未入力・AI提案部分を確認した（正式目標など未入力のままでは承認できません）</label>{% endif %}<button class="success">内容を確認済みにする</button></form>{% endif %}</div>
+<section class="panel"><h2>活動分類とテーマ</h2><div class="featureline"><span class="pill">{{"Minecraft以外" if plan.data.get("activity_mode")=="other" else "Minecraft"}}</span>{% if plan.data.get("curriculum_group") %}<span class="pill light">{{plan.data.curriculum_group}}</span>{% endif %}<strong>{{plan.data.get("curriculum_label", "Minecraft")}}</strong></div><p class="muted">過去のMinecraft計画は引き続き同じ分類で表示します。</p></section><section class="panel"><h2>未入力項目・AI補完の確認</h2>
+<p class="muted">未入力の項目があっても活動案を生成できます。空欄の元データを書き換えず、AIの仮案と区別します。</p>
+{% if plan.data.get('missing_inputs') %}<div class="notice warn"><strong>要確認：{{plan.data.missing_inputs|length}}項目</strong>（正式な支援内容として自動確定しません）</div>
+<div class="table-scroll"><table><thead><tr><th>区分</th><th>未入力項目</th><th>扱い</th></tr></thead><tbody>{% for m in plan.data.missing_inputs %}<tr><td>{{m.section}}</td><td>{{m.label}}</td><td>{{m.handling}}</td></tr>{% endfor %}</tbody></table></div>{% else %}<p>主要入力項目の未入力は検出されませんでした。</p>{% endif %}
+{% if plan.data.get('ai_assumptions') %}<h3>AIが提案した補完内容</h3>{% for a in plan.data.ai_assumptions %}<div class="mapping"><strong>{{a.field}}：AI提案</strong><p>{{a.proposal}}</p><p class="muted">根拠・注意：{{a.reason}}</p></div>{% endfor %}{% endif %}</section>
+<section class="panel"><h2>活動の目的</h2><p class="pre">{{plan.data.overview}}</p>
+<h3>今回の目標</h3><ul>{% for x in plan.data.objectives %}<li>{{x}}</li>{% endfor %}</ul>
+<h3>4つの基本活動との関連</h3><p>{% for x in plan.data.basic_activities %}<span class="pill light">{{x}}</span>{% endfor %}</p>
+<h3>必要な準備物</h3><ul>{% for x in plan.data.materials %}<li>{{x}}</li>{% endfor %}</ul></section>
+<section class="panel"><h2>活動の流れ</h2><div class="steps">{% for st in plan.data.steps %}<div class="step"><div class="step-head"><span class="stepnum">{{loop.index}}</span><h3>{{st.phase}}</h3><span class="pill">{{st.minutes}}分</span></div>
+<dl class="details"><dt>こどもの活動</dt><dd>{{st.child_action}}</dd><dt>職員の支援</dt><dd>{{st.staff_support}}</dd><dt>観察・評価</dt><dd>{{st.evaluation}}</dd></dl></div>{% endfor %}</div></section>
+<section class="panel"><h2>5領域との関連</h2><p class="muted">5領域の視点を示しています。必ずしも全領域がこの活動の直接目標になるわけではありません。</p>
+<div class="table-scroll"><table><thead><tr><th>領域</th><th>位置付け</th><th>理由</th><th>活動</th><th>評価</th></tr></thead><tbody>
+{% for d in plan.data.domains %}<tr><th>{{d.name}}</th><td>{{d.weight}}</td><td>{{d.reason}}</td><td>{{d.activity}}</td><td>{{d.assessment}}</td></tr>{% endfor %}</tbody></table></div></section>
+<section class="panel"><h2>個別支援計画との対応</h2><p class="muted">元の長期・短期目標と活動内容の対応を職員が照合してください。</p>
+{% for g in plan.data.goal_links %}<div class="mapping"><strong>元の目標</strong><p>{{g.source_goal}}</p><strong>活動との関係</strong><p>{{g.program_link}}</p><strong>確認方法</strong><p>{{g.check}}</p></div>{% endfor %}</section>
+<div class="two cardside"><section class="panel"><h2>合理的配慮と本人の自己選択</h2><h3>配慮事項</h3><ul>{% for x in plan.data.accommodations %}<li>{{x}}</li>{% endfor %}</ul>
+<h3>本人が決められること</h3><ul>{% for x in plan.data.child_choices %}<li>{{x}}</li>{% endfor %}</ul>
+<h3>安全</h3><ul>{% for x in plan.data.safety %}<li>{{x}}</li>{% endfor %}</ul></section>
+<section class="panel"><h2>支援の広がりと観察</h2><dl class="details"><dt>家族支援</dt><dd>{{plan.data.family_support}}</dd>
+<dt>移行支援</dt><dd>{{plan.data.transition_support}}</dd><dt>地域支援・連携</dt><dd>{{plan.data.community_support}}</dd></dl>
+<h3>観察ポイント</h3><ul>{% for x in plan.data.observations %}<li>{{x}}</li>{% endfor %}</ul>
+<h3>注意・要確認</h3><p>{{plan.data.note}}</p></section></div>
+{% if plan.review_note %}<div class="notice">職員の確認メモ：{{plan.review_note}}</div>{% endif %}
+<section class="panel"><h2>実施記録・振り返り</h2><p class="muted">実施後の観察した事実を記録してください。AIの提案と実際の出来事を分けて保存します。</p>
+<form method="post" action="/plans/{{plan.id}}/records" class="stack"><input type="hidden" name="_csrf" value="{{csrf}}"><div class="two"><label>実施日<input name="observed_on" type="date" required></label>
+<label>参加・体調の様子<input name="participation" placeholder="例：本人の意思で参加。途中で休憩を選択"></label></div>
+<label>観察した行動（事実）<textarea name="observed" rows="3" placeholder="例：開始時に3つから自分で活動を選んだ"></textarea></label>
+<label>目標に対する評価（事実と解釈を分ける）<textarea name="assessment" rows="3"></textarea></label>
+<label>次回の見直し・職員間共有<textarea name="next_action" rows="2"></textarea></label>
+<button class="secondary">実施記録を追加</button></form>
+{% if records %}<h3>記録の履歴</h3>{% for r in records %}<div class="mapping"><strong>{{r.observed_on}}</strong><p>参加：{{r.data.participation}}</p><p>観察：{{r.data.observed}}</p><p>評価：{{r.data.assessment}}</p><p>次回：{{r.data.next_action}}</p></div>{% endfor %}{% endif %}</section>
+{% endblock %}

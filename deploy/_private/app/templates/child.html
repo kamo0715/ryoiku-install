@@ -10,10 +10,10 @@
 <section class="panel"><div class="topline small"><h2>個別支援計画の履歴</h2><span class="muted">{{supports|length}}件</span></div>
 {% if supports %}<div class="table-scroll"><table><thead><tr><th>版</th><th>登録日</th><th>短期目標（冒頭）</th><th></th></tr></thead><tbody>
 {% for s in supports %}<tr><td>第{{s.version}}版 {% if loop.first %}<span class="pill">最新版</span>{% endif %}</td><td>{{s.created_at[:10]}}</td><td>{{s.data.short_goal[:95]}}</td><td><a href="/children/{{child.id}}/support/{{s.id}}">内容を見る</a></td></tr>{% endfor %}
-</tbody></table></div>{% else %}<p class="muted">未登録です。活動案の下書きは生成できますが、個別支援計画の目標との照合が必要です。</p>{% endif %}</section>
+</tbody></table></div>{% else %}<p class="muted">未登録です。活動案は生成できますが、個別支援計画の目標との照合が必要です。</p>{% endif %}</section>
 <section class="panel"><div class="topline small"><h2>療育カリキュラムの履歴</h2><span class="muted">{{plans|length}}件</span></div>
 {% if plans %}<div class="table-scroll"><table><thead><tr><th>No.</th><th>作成日</th><th>活動分類</th><th>モデル</th><th>状態</th><th></th></tr></thead><tbody>
-{% for p in plans %}<tr><td>#{{p.id}}</td><td>{{p.created_at[:10]}}</td><td>{{p.curriculum_label}}</td><td>{{p.provider}} / {{p.model}}</td><td>{{'確認済' if p.status=='approved' else '下書き'}}</td><td><a href="/plans/{{p.id}}">表示</a></td></tr>{% endfor %}
+{% for p in plans %}<tr><td>#{{p.id}}</td><td>{{p.created_at[:10]}}</td><td>{{p.curriculum_label}}</td><td>{{p.provider}} / {{p.model}}</td><td>{{'確認済み' if p.status=='approved' else '保存済み（要確認）'}}</td><td><a href="/plans/{{p.id}}">表示</a></td></tr>{% endfor %}
 </tbody></table></div>{% else %}<p class="muted">まだ生成されていません。</p>{% endif %}</section>
 {% if user.role == 'admin' %}
 <section class="panel" aria-labelledby="delete-heading">

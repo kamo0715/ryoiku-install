@@ -1,0 +1,123 @@
+{% extends "base.html" %}{% block content %}
+<a class="back" href="/children/{{child.id}}">← {{child.data.name}} の詳細へ</a>
+<div class="workflow-header">
+<span class="eyebrow">ACTIVITY BUILDER</span>
+<h1>カリキュラムを作る</h1>
+<p>やりたいことを選んでください。<strong>一度に複数の活動を作る</strong>のがおすすめです。</p>
+</div>
+{% if not sup %}<div class="notice warn"><strong>個別支援計画がまだありません。</strong> 活動は作成できますが、正式な支援目標との照合が必要です。 <a href="/children/{{child.id}}/support/new">個別支援計画を入力する</a></div>{% endif %}
+<div class="workflow-switcher" role="group" aria-label="作りたいものを選択">
+<button type="button" class="workflow-choice" data-workflow-choice="batch" aria-pressed="true" aria-controls="flow-mode-batch"><strong>複数まとめて作る</strong><small>新しい活動を2〜8件</small></button>
+<button type="button" class="workflow-choice" data-workflow-choice="single" aria-pressed="false" aria-controls="flow-mode-single"><strong>1件だけ作る</strong><small>新しい活動を1件</small></button>
+<button type="button" class="workflow-choice" data-workflow-choice="saved" aria-pressed="false" aria-controls="flow-mode-saved"><strong>保存済みを使う</strong><small>既存の活動を組み合わせる</small></button>
+</div>
+<div class="workflow-panel" id="flow-mode-batch" data-workflow-panel="batch">
+<section class="panel stack" aria-labelledby="batch-generate-title">
+<div class="section-heading"><span class="step-bubble">1</span><div><h2 id="batch-generate-title">新しい活動をまとめて作る</h2><p class="muted">まず2件を入力。必要なだけ活動を追加できます（最大8件）。</p></div></div>
+<p class="muted">作成する活動の名前と時間を入力してください。その他の設定は必要なときだけ開けます。</p>
+<form action="/children/{{child.id}}/generate-batch" method="post" id="batch-generate-form" class="stack">
+<input type="hidden" name="_csrf" value="{{csrf}}">
+{% for i in range(1,max_day_plans+1) %}
+<details class="editing stack batch-activity-card" {% if i<=2 %}open{% endif %} data-batch-row>
+<summary class="batch-summary"><span class="batch-number">{{i}}</span><strong data-batch-summary-label>活動 {{i}} の内容</strong><small>タップして編集</small></summary>
+<label class="check batch-enable"><input type="checkbox" name="batch_enabled_{{i}}" value="yes" {% if i<=2 %}checked{% endif %} data-batch-enabled><span>生成する活動に含める</span></label>
+<div class="two">
+<label>活動の種類
+<select name="batch_mode_{{i}}" data-batch-mode><option value="minecraft" {% if i==1 %}selected{% endif %}>Minecraft</option><option value="other" {% if i!=1 %}selected{% endif %}>Minecraft以外</option></select></label>
+<label data-batch-kind-field>Minecraft以外のジャンル
+<select name="batch_kind_{{i}}">
+{% for group,items in category_groups.items() %}<optgroup label="{{group}}">{% for code,label in items.items() %}<option value="{{code}}">{{label}}</option>{% endfor %}</optgroup>{% endfor %}
+</select></label>
+<label>活動テーマ（任意）<input name="batch_theme_{{i}}" maxlength="200" placeholder="例：役割分担・タイピング・買い物" data-batch-theme></label>
+<label>活動時間（分）<input name="batch_duration_{{i}}" type="number" min="15" max="180" value="30" data-batch-duration></label>
+</div><details class="advanced-options"><summary>詳細設定（必要な場合だけ）</summary><div class="two"><label data-batch-advanced-field>自由入力の活動ジャンル（「その他」選択時）<input name="batch_custom_{{i}}" maxlength="80" placeholder="例：防災訓練"></label>
+<label data-batch-advanced-field>Minecraftの種類（任意）<input name="batch_edition_{{i}}" maxlength="100" placeholder="例：教育版、Java版"></label>
+<label data-batch-advanced-field>参加人数・形式（任意）<input name="batch_group_size_{{i}}" maxlength="100" placeholder="個別、小集団"></label>
+<label data-batch-advanced-field>活動場所（任意）<input name="batch_place_{{i}}" maxlength="150" placeholder="例：プレイルーム"></label>
+</div><label>材料・機材（任意）<input name="batch_materials_{{i}}" maxlength="300" placeholder="例：端末、画用紙、タイマー"></label>
+<label>希望や配慮（任意）<textarea name="batch_preferences_{{i}}" rows="2" maxlength="1000" placeholder="例：短い工程と休憩を組み合わせる"></textarea></label></details>
+{% if i > 2 %}<button class="button secondary batch-remove" type="button" data-remove-batch-row>この活動を外す</button>{% endif %}
+</details>
+{% endfor %}
+<button class="button secondary" type="button" id="add-batch-activity">＋ 活動を追加する</button>
+<p class="notice compact-notice" id="batch-selection-status" role="status" aria-live="polite">最初の2件が選択されています。チェックの順（1→8）で1日の流れに追加します。</p>
+<details class="advanced-options"><summary>AIに送る情報・プライバシーについて</summary><p>外部AIには利用者・学校名・原文・自由入力を送らず、活動の分類と支援方法の固定表現だけを使用します。送信前には全件確認が必要です。デモモードでは外部AIへ接続しません。</p></details>
+<label class="check"><input type="checkbox" name="batch_consented" value="yes" required><span>すべての活動の情報管理ルールと外部AIへの送信可否を確認しました。</span></label>
+<div class="workflow-submit"><button type="submit" class="primary full" id="batch-generate-submit">選んだ活動をまとめて生成 → 1日の流れへ</button></div>
+<p class="muted">生成がすべて成功したときだけ活動を保存します。未完成の活動は保存しません。作成後は必ず職員が内容と安全面を確認してください。</p>
+</form>
+</section>
+</div>
+<div class="workflow-panel" id="flow-mode-single" data-workflow-panel="single">
+<div class="notice compact-notice">参照する個別支援計画：<strong>{{('第' ~ sup.version ~ '版') if sup else '未登録（仮案）'}}</strong> ／ AI：<strong>{{provider}} / {{model}}</strong>
+{% if provider=='demo' %}<p><strong>デモモード：</strong> AIサービスには接続せず、固定の動作確認用サンプルを作成します。</p>{% endif %}</div>
+<form method="post" class="panel stack" id="genform" data-focus-by-group="{{category_focus|tojson|forceescape}}" data-safety-by-group="{{category_safety|tojson|forceescape}}"><input type="hidden" name="_csrf" value="{{csrf}}">
+<div class="form-heading"><h2>1. 活動を選ぶ</h2><p class="muted">「Minecraft以外」では、大分類から学習・SST・生活・運動・創作などを選び、さらに詳細な活動を選択できます。</p></div>
+<div class="two"><label>活動の種類 <span class="required">必須</span><select name="activity_mode" id="activity_mode" required>
+<option value="minecraft">Minecraft</option><option value="other">Minecraft以外</option></select></label>
+</div>
+<div id="kind_wrap" class="two">
+<label>大分類<select id="kind_group" aria-label="カリキュラムの大分類">{% for group in category_groups %}<option value="{{group}}">{{group}}</option>{% endfor %}</select></label>
+<label>詳細分類<select name="kind_code" id="kind_code" aria-label="カリキュラムの詳細分類">
+{% for group, items in category_groups.items() %}{% for code,label in items.items() %}<option data-group="{{group}}" value="{{code}}">{{label}}</option>{% endfor %}{% endfor %}
+</select></label></div>
+<div id="category_hint" class="notice" hidden><strong>活動分類のヒント：</strong><span id="category_hint_text">詳細な活動を選択してください。</span><p class="muted">分類は活動を探しやすくする便宜的なもので、5領域との関連は本人の個別支援計画に基づいて判断します。</p></div>
+<label id="custom_wrap">自由入力の活動ジャンル名<input name="custom_activity" id="custom_activity" maxlength="80" placeholder="例：防災訓練・水遊び・買い物練習"></label>
+<label id="edition_wrap">Minecraftの種類（任意）<input name="edition" placeholder="例：教育版、Java版、統合版"></label>
+<div class="form-heading"><h2>2. 時間とテーマを決める</h2></div>
+<div class="two"><label>今回の活動テーマ<input name="theme" placeholder="空欄なら活動案をAIが提案"></label>
+<label>活動時間 <span class="required">必須</span><input name="duration" type="number" min="15" max="180" value="45" required></label>
+<label>参加人数・形式<input name="group_size" placeholder="例：個別・小集団3人"></label>
+<label>活動場所<input name="activity_place" placeholder="例：プレイルーム・屋外・調理室"></label></div>
+<label>利用可能な材料・機材<input name="available_materials" placeholder="例：画用紙、工作道具、タブレット、タイマー"></label>
+<label>その他の希望や配慮<textarea name="preferences" rows="4" placeholder="例：活動を複数の短い工程に分けたい"></textarea></label>
+<details class="advanced-options"><summary>入力のヒントを見る</summary><p><strong>未入力でも進められます。</strong> 活動テーマ・手順・観察方法などの仮案はAIが提案します。ただし、児童の特性・診断・家族の意向・個別支援計画の正式目標を推測で確定しません。</p></details>
+<details class="advanced-options"><summary>AI送信前の安全確認について</summary><strong>個人情報・情報管理の確認</strong>
+<p>外部AIには個別支援計画の原文・氏名・学校の実名・連絡先・診断名・家庭状況・自由記述を送信しません。児童A・学校Aなどの仮表示を使い、2択・指差し・タイマーなど具体的な支援の方法を固定語彙で残してから、職員がプレビューを確認して送信します。</p>
+<p>活動テーマ・場所などの自由記述の原文は外部AIに送りません。生成後に個別支援計画の原文と職員が照合してください。仮表示・情報最小化は、法的な匿名加工情報を保証しません。</p></details>
+<label class="check"><input type="checkbox" name="consent" value="yes" required><span>事業所の情報管理ルール上、この情報を選択中のAIへ送信してよいことを確認しました。</span></label>
+{% if recent_plans %}
+<details class="advanced-options"><summary>保存済みの活動を追加する（任意）</summary>
+<p class="muted">チェックした活動を新しく生成する活動と同じ1日の予定に組み込みます。次の画面で時間と順番を変更できます。ここで選んだ計画は外部AIへ送信しません。</p>
+{% for p in recent_plans %}<label class="check"><input type="checkbox" name="combine_plan_ids" value="{{p.id}}"><span>{{p.data.title or '活動計画 #' ~ p.id}}（#{{p.id}}）</span></label>{% endfor %}
+</details>
+{% endif %}
+<section class="stack" aria-label="生成後の画面">
+<h2>3. 作成後の進み方</h2>
+<label class="check"><input type="radio" name="after_generate" value="day_flow" checked><span><strong>カリキュラム作成後、そのまま「1日の支援の流れ」を作成する</strong><small>作成した計画を自動選択し、同じ利用者の他の活動も追加できます。日付・時間・休憩・出力形式を確認してPDF等を生成します。</small></span></label>
+<label class="check"><input type="radio" name="after_generate" value="detail"><span>カリキュラム詳細の確認・編集へ進む</span></label>
+</section>
+<div class="workflow-submit"><button type="submit" class="primary full" id="generateButton">この活動を生成して次へ</button></div>
+<p id="generation-status" class="sr-only" role="status" aria-live="polite"></p>
+<p class="muted">完成した活動だけを保存します。入力途中の内容は保存しません。職員が内容・安全面を確認してください。</p>
+</form>
+
+</div>
+<div class="workflow-panel" id="flow-mode-saved" data-workflow-panel="saved">
+{% if recent_plans %}
+<section class="panel stack" aria-labelledby="previous-flows">
+<h2 id="previous-flows">保存済みの活動を組み合わせる</h2>
+<p class="muted">活動をチェックして「1日の流れへ」を押します。新しいAI生成は行いません。</p>
+<form method="get" action="/children/{{child.id}}/day-flow" id="curriculum-multi-form" class="stack">
+<label for="saved-curriculum-search">活動を検索<input id="saved-curriculum-search" type="search" placeholder="活動名で絞り込み" autocomplete="off"></label>
+<div id="curriculum-multi-items" class="stack">
+{% for p in recent_plans %}
+<div class="editing curriculum-select-item" data-curriculum-item>
+<label class="check"><input type="checkbox" name="plan_ids" value="{{p.id}}" data-curriculum-checkbox>
+<span><strong>{{p.data.title or '活動計画 #' ~ p.id}}</strong><small>{{p.created_at[:10]}}／{{p.data.steps|length}}手順／{{'職員確認済み' if p.status=='approved' else '保存済み（要確認）'}}</small></span></label>
+<div class="actions"><button class="secondary" type="button" data-selection-up aria-label="このカリキュラムを上へ">↑ 上へ</button><button class="secondary" type="button" data-selection-down aria-label="このカリキュラムを下へ">↓ 下へ</button><a class="button secondary" href="/plans/{{p.id}}/day-flow">この1件だけで作成</a></div>
+</div>
+{% endfor %}
+</div>
+<div class="notice" id="curriculum-multi-status" role="status" aria-live="polite">活動を選択してください（最大{{max_day_plans}}件）。</div>
+<div class="workflow-submit"><button class="primary full" type="submit" id="curriculum-multi-submit">選んだ活動で1日の流れへ</button></div>
+</form>
+<p class="muted">他の利用者の活動は選べません。関係機関用には職員確認済みの活動だけを使用できます。</p>
+</section>
+{% endif %}
+{% if not recent_plans %}<section class="panel"><h2>保存済みの活動はまだありません</h2><p>まずは「複数まとめて作る」か「1件だけ作る」から始めてください。</p></section>{% endif %}
+</div>
+<script src="/static/generate_multi_select.js" defer></script>
+<script src="/static/generate_batch.js" defer></script>
+<script src="/static/curriculum_workflow.js" defer></script>
+{% endblock %}

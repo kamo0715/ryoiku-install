@@ -23,6 +23,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from settings import ROOT, APP_SECRET, COOKIE_SECURE, check_settings, LOG_DIR
 from storage import (init_db,init_records,conn,now,create_user,auth,user_by_id,list_users,
   new_child,get_child,all_children,deleted_children,child_history_counts,edit_child,archive_child,restore_child,new_support,get_support,
+  save_support_draft,get_support_draft,delete_support_draft,
   support_history,latest_support,add_plan,add_plans_batch,get_plan,plans_for_child,save_plan,approve_plan,
   add_record,plan_records,get_setting,set_setting,activity,error,
   change_user_role,change_user_status,reset_user_password,user_exists,
@@ -353,11 +354,39 @@ async def child_restore(request:Request,cid:int):
 
 @app.get('/children/{cid}/support/new')
 async def support_page(request:Request,cid:int):
-    actor(request);child=get_child(cid)
+    user=actor(request);child=get_child(cid)
     if not child:raise HTTPException(404)
     prior=latest_support(cid)
-    return view(request,'support_form.html',child=child,previous=prior,
-               form_data=prior['data'] if prior else {},support_fields=SUPPORT_FIELDS)
+    draft=get_support_draft(cid,user['id'])
+    return view(request,'support_form.html',child=child,previous=prior,draft=draft,
+               draft_needs_review=bool(draft and draft['requires_review']),
+               form_data=draft['data'] if draft else (prior['data'] if prior else {}),
+               support_fields=SUPPORT_FIELDS)
+
+@app.post('/children/{cid}/support/draft')
+async def support_save_draft(request:Request,cid:int):
+    user=actor(request)
+    child=get_child(cid)
+    if not child:raise HTTPException(404)
+    f=await checked_form(request)
+    data=form_values(f,SUPPORT_FIELDS,20000)
+    if not any(data.values()):
+        return view(request,'support_form.html',child=child,previous=latest_support(cid),
+                    form_data=data,message='下書きに保存する内容を入力してください。')
+    earlier=get_support_draft(cid,user['id'])
+    requires_review=bool(f.get('ocr_preview_token') or (earlier and earlier['requires_review']))
+    save_support_draft(cid,data,user['id'],requires_review=requires_review)
+    activity(request.state.request_id,user['id'],'support_draft_saved',cid)
+    return go(f'/children/{cid}/support/new?draft_saved=1')
+
+@app.post('/children/{cid}/support/draft/delete')
+async def support_discard_draft(request:Request,cid:int):
+    user=actor(request)
+    if not get_child(cid):raise HTTPException(404)
+    await checked_form(request)
+    delete_support_draft(cid,user['id'])
+    activity(request.state.request_id,user['id'],'support_draft_discarded',cid)
+    return go(f'/children/{cid}/support/new')
 
 @app.post('/children/{cid}/support/pdf')
 async def support_pdf_text_import(request:Request,cid:int):
@@ -437,6 +466,15 @@ async def support_add(request:Request,cid:int):
             return view(request,'support_form.html',child=child,form_data={},previous=latest_support(cid),
                         ocr_message='読み取り結果を保存できません。本人・保護者・アセスメントの各確認欄をチェックして原文を照合し、もう一度解析してください。')
     data=form_values(f,SUPPORT_FIELDS,20000)
+    private_draft=get_support_draft(cid,user['id'])
+    # An imported working copy may not bypass the original source review.
+    if (private_draft and private_draft['requires_review'] and not preview_token and
+        (str(f.get('draft_review_verified',''))!='yes' or
+         any(str(f.get(key,''))!='yes' for key in
+             ('review_child_intentions','review_family_intentions','review_assessment')))):
+        return view(request,'support_form.html',child=child,form_data=data,previous=latest_support(cid),
+                    draft=private_draft,draft_needs_review=True,
+                    message='PDF・文章から取り込んだ下書きは、本人の希望・保護者の意向・アセスメントの原文照合が必要です。')
     if not any(data.get(k) for k in SUPPORT_FIELDS if k not in ('period_start','period_end')):
         return view(request,'support_form.html',child=child,form_data=data,previous=None,
                     support_fields=SUPPORT_FIELDS,message='すべて未入力の場合は保存せず、利用者画面から活動案を生成できます。部分入力の場合は任意の1項目を入力してください。')
