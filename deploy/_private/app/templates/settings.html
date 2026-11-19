@@ -1,0 +1,34 @@
+{% extends "base.html" %}{% block content %}
+<div class="eyebrow">ADMINISTRATOR</div><h1>AIモデル・APIキーの設定</h1>
+<p class="muted">サービスを切り替え、モデルIDを入力してください。APIキーは提供元ごとに暗号化して保存し、画面に再表示しません。</p>
+<form method="post" class="panel stack narrow" autocomplete="off">
+<input type="hidden" name="_csrf" value="{{csrf}}">
+<label>AI提供元
+<select name="provider" id="ai-provider" required>
+{% for code,entry in providers.items() %}
+<option value="{{code}}" data-model="{{saved_models[code]}}" data-example="{{entry.example}}" {% if provider==code %}selected{% endif %}>{{entry.name}}（{{key_status[code]}}）</option>
+{% endfor %}
+</select></label>
+<label>モデルID
+<input name="model" id="ai-model" required minlength="2" maxlength="120" value="{{model}}" autocomplete="off" placeholder="利用先の公式なモデルID">
+<small>現在のモデル：{{model}}。サービスを変更したら、選択先で利用可能なモデルIDへ変更してください。公式のモデル一覧を確認してください。</small>
+</label>
+<label>選択した提供元の新しいAPIキー（登録・変更する場合のみ）
+<input type="password" name="api_key" maxlength="4096" autocomplete="new-password" placeholder="入力しなければ既存キーを維持">
+<small>入力したキーは暗号化してDBに保存します。既存のキーは表示されません。</small>
+</label>
+<label class="checkbox"><input type="checkbox" name="clear_key" value="yes"> 選択した提供元について、WebUIで保存したキーを削除する</label>
+<small>削除後、サーバーの環境変数にキーがある場合はそちらが使用されます。</small>
+<button class="primary" type="submit">AI設定を保存する</button>
+</form>
+<section class="panel"><h2>接続先とキー登録状況</h2>
+<p class="muted">「登録済み」は外部APIへの通信が成功したことを意味しません。生成時に接続・契約・モデルIDが検証されます。</p>
+<div class="table-wrap"><table><thead><tr><th>AI提供元</th><th>APIキーの状態</th><th>資料</th></tr></thead><tbody>
+{% for code,entry in providers.items() %}<tr><td>{{entry.name}}</td><td>{{key_status[code]}}</td><td>{% if entry.docs %}<a href="{{entry.docs}}" target="_blank" rel="noopener noreferrer">公式サイト</a>{% else %}—{% endif %}</td></tr>{% endfor %}
+</tbody></table></div></section>
+<section class="panel"><h2>個人情報と料金について</h2>
+<p>外部AIを選択すると、氏名など一部を伏せた個別支援計画の内容が選択先サービスへ送信されます。自由記述を完全に匿名化できるわけではありません。児童の実データを送信する前に、事業所の承認、利用条件、データ保持、転送先を必ず確認してください。</p>
+<p>モデルやプロバイダによっては別途API利用料が必要です。OpenRouterなどの中継サービスでは、さらに別の提供元へ転送される場合があります。</p>
+<p>ロリポップ共用サーバーでは外部クラウドAIを選択してください。Ollama（ローカルAI）はこのWebサーバー上に稼働しておらず、通常は接続できません。AI生成はサーバーのCGI実行時間制限を守るため、約18秒以内に応答するモデルでのみ利用可能です。生成がタイムアウトする場合、短い入力や応答の速いモデルを使用してください。</p>
+<p>公式ガイドラインの確認日：{{source_date}}。AIモデルの更新は法令・ガイドラインの更新とは別です。</p>
+</section>{% endblock %}

@@ -1,0 +1,87 @@
+{% extends "base.html" %}{% block content %}
+<a href="/plans/{{plan.id}}" class="back">← 活動計画の詳細に戻る</a>
+<div class="eyebrow">DAILY SUPPORT FLOW / MULTIPLE CURRICULA</div>
+<h1>1日の支援の流れ（複数カリキュラム対応）</h1>
+<div class="notice">同じ利用者の複数のカリキュラムを選び、実施順・時間・途中の休憩等を設定します。保存済みの活動手順を確認・修正してから1枚の時系列表にまとめ、職員用・関係機関用・利用者用のPDF／Word／Excelを生成します。<strong>PDF・Word・ExcelはA4横の1ページ印刷を前提に出力します。文字が小さくなりすぎる予定は、内容を勝手に省略せず再編集を求めます。元の活動計画は変更されません。</strong></div>
+<div class="notice warn">選択した活動に未承認・デモ計画が1つでも含まれる場合、関係機関用の出力はできません。関係機関用の帳票は共有先に応じて記載内容を必ず確認してください。</div>
+<form class="stack" method="post" id="day-flow-form">
+<input type="hidden" name="_csrf" value="{{csrf}}">
+<section class="panel stack"><h2>1. 実施日・開始時刻</h2>
+<div class="two"><label>実施日（任意）<input name="event_date" type="date"></label>
+<label>全体の開始時刻（必須）<input name="start_time" type="time" value="14:00" required></label></div>
+<label>実施場所（任意）<input name="location" maxlength="800" placeholder="例：活動室"></label>
+<p class="muted">対象利用者：{{child.data.name}}。異なる利用者のカリキュラムは混在できません。最大{{max_day_plans}}件、合計12時間以内です。</p></section>
+<details class="panel"><summary><strong>2. 登所・準備など、活動の前に追加する予定（最大4行）</strong></summary>
+<p class="muted">元のカリキュラムにない登所・送迎等は職員が必要な場合に入力してください。</p>
+{% for i in range(4) %}<div class="editing"><h3>前の予定 {{i+1}}</h3><div class="two"><label>場面<input name="before_{{i}}_phase" maxlength="800"></label><label>所要時間（分）<input name="before_{{i}}_minutes" type="number" min="1" max="180" data-minutes></label></div>
+<label>こどもの活動<input name="before_{{i}}_child_action" maxlength="800"></label><label>職員の支援<input name="before_{{i}}_staff_support" maxlength="800"></label><label>利用者用の表示名（任意・26文字以内）<input name="before_{{i}}_child_label" maxlength="26" placeholder="例：はじまりのじゅんび"></label><label>観察・申し送り<input name="before_{{i}}_handoff" maxlength="800"></label></div>{% endfor %}</details>
+<section class="panel stack"><h2>3. カリキュラムの選択・実施順</h2>
+<p class="muted">追加したい活動にチェックを入れ、順番を指定してください。選択した活動の手順を、PDF等に記載する前に修正できます。必要なら活動の間に休憩を挟めます。</p>
+{% if more_plans %}<div class="notice warn">同じ利用者に40件以上の活動計画があります。ここには開始元と最新の計40件を表示しています。</div>{% endif %}
+<div class="stack" id="day-plan-list">
+{% for p in candidate_plans %}
+{% set initial=(p.id==plan.id) %}
+<article class="editing day-plan-block" data-day-plan data-plan-id="{{p.id}}" data-default-minutes="{{p.data.steps|sum(attribute='minutes')}}">
+<div class="day-plan-head"><label class="check"><input type="checkbox" name="include_{{p.id}}" value="yes" data-day-include {% if initial %}checked{% endif %}>
+<strong>{{p.data.title or '無題の活動計画'}}</strong></label>
+<span class="muted">計画 #{{p.id}}／{{'承認済' if p.status=='approved' else '下書き'}}／{{p.data.steps|length}}手順</span></div>
+<div class="day-plan-order"><label>実施順（1〜8）<input name="order_{{p.id}}" type="number" min="1" max="8" value="{{1 if initial else ''}}" class="day-order" data-day-order></label>
+<button type="button" class="secondary" data-move-up>↑ 上へ</button><button type="button" class="secondary" data-move-down>↓ 下へ</button></div>
+<div data-plan-editor {% if not initial %}hidden{% endif %}>
+<label>利用者用の活動名（26文字以内・任意）<input name="child_plan_{{p.id}}_label" maxlength="26" placeholder="例：こうえんを つくろう"></label>
+<div class="notice">以下の活動手順はカリキュラムから取得しています。編集した内容は今回の帳票出力にのみ反映されます。</div>
+{% if not p.data.steps %}<div class="notice warn">このカリキュラムには活動手順がありません。選択しても出力できません。</div>{% endif %}
+{% for step in p.data.steps %}<fieldset class="editing day-step"><legend><strong>手順 {{loop.index}}（{{p.data.title or '活動'}}）</strong></legend>
+<div class="two"><label>場面<input name="plan_{{p.id}}_source_{{loop.index0}}_phase" value="{{step.phase or step.title or ''}}" maxlength="800"></label>
+<label>所要時間（分）<input name="plan_{{p.id}}_source_{{loop.index0}}_minutes" type="number" value="{{step.minutes}}" min="1" max="180" data-minutes></label></div>
+<label>こどもの活動<textarea name="plan_{{p.id}}_source_{{loop.index0}}_child_action" rows="2" maxlength="800">{{step.child_action or step.child_activity or ''}}</textarea></label>
+<label>利用者用・この手順の表示名（任意・26文字以内）<input name="plan_{{p.id}}_source_{{loop.index0}}_child_label" maxlength="26" placeholder="例：ブロックを えらぶ"></label>
+<label>職員の支援・関わり<textarea name="plan_{{p.id}}_source_{{loop.index0}}_staff_support" rows="2" maxlength="800">{{step.staff_support or step.support or ''}}</textarea></label>
+<label>観察・申し送り<textarea name="plan_{{p.id}}_source_{{loop.index0}}_evaluation" rows="2" maxlength="800">{{step.evaluation or step.assessment or ''}}</textarea></label>
+</fieldset>{% endfor %}
+<details class="panel day-between"><summary>このカリキュラムの後に休憩・移動などを追加（任意）</summary>
+<p class="muted">この活動が最後のときは追加されません。休憩などは必要な場合のみ具体的に入力してください。</p>
+<div class="two"><label>場面<input name="between_{{p.id}}_phase" maxlength="800" placeholder="例：休憩"></label>
+<label>所要時間（分）<input name="between_{{p.id}}_minutes" type="number" min="1" max="180" data-minutes></label></div>
+<label>こどもの活動<input name="between_{{p.id}}_child_action" maxlength="800"></label>
+<label>職員の支援<input name="between_{{p.id}}_staff_support" maxlength="800"></label><label>利用者用の表示名（任意・26文字以内）<input name="between_{{p.id}}_child_label" maxlength="26" placeholder="例：やすみじかん"></label>
+<label>観察・申し送り<input name="between_{{p.id}}_handoff" maxlength="800"></label>
+</details>
+</div>
+</article>
+{% endfor %}
+</div>
+<div class="notice" id="day-flow-preview" role="status" aria-live="polite">選択したカリキュラムと実施時間を確認してください。</div>
+</section>
+<details class="panel"><summary><strong>4. 片付け・帰りの準備など、活動の後に追加する予定（最大4行）</strong></summary>
+{% for i in range(4) %}<div class="editing"><h3>後の予定 {{i+1}}</h3><div class="two"><label>場面<input name="after_{{i}}_phase" maxlength="800"></label><label>所要時間（分）<input name="after_{{i}}_minutes" type="number" min="1" max="180" data-minutes></label></div>
+<label>こどもの活動<input name="after_{{i}}_child_action" maxlength="800"></label><label>職員の支援<input name="after_{{i}}_staff_support" maxlength="800"></label><label>利用者用の表示名（任意・26文字以内）<input name="after_{{i}}_child_label" maxlength="26" placeholder="例：かえりのじゅんび"></label><label>観察・申し送り<input name="after_{{i}}_handoff" maxlength="800"></label></div>{% endfor %}</details>
+<section class="panel stack"><h2>5. 利用者（児童・生徒）用の表示設定</h2>
+<div class="notice">利用者用は時間・活動名・「できた」チェック欄を大きく表示します。職員メモ・評価・申し送り・支援上の配慮事項は自動転記しません。A4横1ページ、最大12項目です。<strong>活動ごと</strong>を選ぶと同じカリキュラムの手順を1つにまとめ、予定時刻はそのまま保持します。</div>
+<div class="two"><label>表示する単位<select name="child_view"><option value="activities" selected>活動ごと（おすすめ：同じ活動を1項目にまとめる）</option><option value="steps">手順ごと（詳しく表示・最大12項目）</option></select></label>
+<label>見出し（任意）<input name="child_heading" maxlength="18" placeholder="例：きょうの よてい"></label></div>
+<label>最後のひとこと（任意）<input name="child_message" maxlength="40" placeholder="例：こまったら せんせいに きいてね"></label>
+<label class="check"><input type="checkbox" name="child_show_name" value="yes"> 利用者の氏名を印刷する（初期設定：印刷しない）</label>
+<p class="muted">活動名は各カリキュラムの「利用者用の活動名」で簡単な言葉に変更できます。空欄の場合は元の活動名を使用します。長すぎる名称は自動で省略せず、修正を求めます。利用者へ渡す前に、氏名・学校名などの不要な情報がないか職員が確認してください。</p>
+<label class="check"><input type="checkbox" name="child_review" value="yes"> 利用者に渡す活動名・時刻・個人情報を職員が確認した（必須）</label>
+<div class="actions"><button class="primary" name="audience" value="child" formaction="/plans/{{plan.id}}/day-flow/export/pdf">利用者用 PDF</button>
+<button class="secondary" name="audience" value="child" formaction="/plans/{{plan.id}}/day-flow/export/docx">利用者用 Word</button>
+<button class="secondary" name="audience" value="child" formaction="/plans/{{plan.id}}/day-flow/export/xlsx">利用者用 Excel</button></div>
+</section>
+<section class="panel stack"><h2>6. 共有内容の確認・職員・関係機関用出力</h2>
+<label>職員用メモ（内部用のみ）<textarea name="staff_notes" rows="3" maxlength="3000"></textarea></label>
+<label>関係機関用の活動名（任意・個人を特定できる情報を含めない）<input name="shared_title" maxlength="160" placeholder="例：ICTを活用した選択・コミュニケーション活動"></label>
+<label>関係機関への共有メモ（任意）<textarea name="agency_notes" rows="3" maxlength="3000"></textarea></label>
+<label class="check"><input type="checkbox" name="share_review" value="yes"> 関係機関に共有する全文章を確認し、必要最小限の内容であることを確認した</label>
+<p class="muted">関係機関用には利用者名・元のカリキュラム名・内部観察評価・目標・配慮事項を自動転記しません。ただし活動文に個人情報が含まれる場合があります。ダウンロード後も確認してください。</p>
+<div class="actions"><button class="primary" name="audience" value="staff" formaction="/plans/{{plan.id}}/day-flow/export/pdf">職員用 PDF</button>
+<button class="secondary" name="audience" value="staff" formaction="/plans/{{plan.id}}/day-flow/export/docx">職員用 Word</button>
+<button class="secondary" name="audience" value="staff" formaction="/plans/{{plan.id}}/day-flow/export/xlsx">職員用 Excel</button></div>
+<div class="actions"><button class="primary" name="audience" value="agency" formaction="/plans/{{plan.id}}/day-flow/export/pdf">関係機関用 PDF</button>
+<button class="secondary" name="audience" value="agency" formaction="/plans/{{plan.id}}/day-flow/export/docx">関係機関用 Word</button>
+<button class="secondary" name="audience" value="agency" formaction="/plans/{{plan.id}}/day-flow/export/xlsx">関係機関用 Excel</button></div>
+<p class="muted">予定と編集内容はこの画面からDBに自動保存されません。正式な個別支援計画ではなく、実施前の職員確認用資料です。</p>
+</section></form>
+<link rel="stylesheet" href="/static/day_flow_multi.css">
+<script src="/static/day_flow_multi.js" defer></script>
+{% endblock %}

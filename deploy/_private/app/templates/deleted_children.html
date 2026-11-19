@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% block content %}
+<a href="/" class="back">← 利用者一覧</a>
+<section class="panel">
+  <h1>削除済み利用者（管理者専用）</h1>
+  <p class="muted">削除済みの利用者は一般の一覧・記録画面に表示されません。復元すると元の個別支援計画・活動案も再び参照できます。ここでは完全消去はできません。</p>
+  {% if children %}
+  {% for child in children %}
+  <div class="panel">
+    <h2>{{child.data.name}}</h2><p>管理番号：<strong>{{child.code}}</strong>　削除日時：{{child.updated_at[:19]}}</p>
+    <form action="/children/{{child.id}}/restore" method="post" data-confirm="この利用者と紐づく記録を復元します。よろしいですか？">
+      <input type="hidden" name="_csrf" value="{{csrf}}">
+      <label>管理番号を再入力して復元
+        <input type="text" name="confirm_code" required autocomplete="off" maxlength="30" pattern="[A-Za-z0-9_-]{2,30}" placeholder="{{child.code}}">
+      </label>
+      <button type="submit" class="button secondary">復元する</button>
+    </form>
+  </div>
+  {% endfor %}
+  {% else %}<p>削除済みの利用者はいません。</p>{% endif %}
+</section>
+{% endblock %}

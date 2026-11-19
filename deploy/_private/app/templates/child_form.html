@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% block content %}<div class="topline"><div><a class="back" href="/">← 利用者一覧</a><h1>{{title}}</h1></div></div>
+<form class="panel stack" method="post" action="{% if child and child.id %}/children/{{child.id}}/edit{% else %}/children/new{% endif %}">
+<input type="hidden" name="_csrf" value="{{csrf}}"><div class="two">
+<label>利用者名 <span class="required">必須</span><input name="name" maxlength="100" value="{{child.data.name if child else ''}}" required></label>
+<label>利用者管理番号 <span class="required">必須</span>
+<input name="code" value="{{child.code if child else ''}}" {% if child and child.id %}readonly{% else %}required pattern="[A-Za-z0-9_-]{2,30}"{% endif %}>
+<small>英数字・_・-、2〜30文字。個人の本名や生年月日は含めないでください。</small></label>
+<label>年齢の目安<input name="age_band" value="{{child.data.age_band if child else ''}}" placeholder="例：小学校高学年"></label>
+<label>学年<input name="grade" value="{{child.data.grade if child else ''}}" placeholder="例：小学校5年"></label>
+</div>
+{% for key,label,tip in [('interests','興味のある活動','例：工作・読書・ゲーム・Minecraftなど'),('strengths','得意なこと・強み','好きな遊びや自分から取り組めること'),('needs','困っていること・支援ニーズ','観察できた事実を入力。診断の推定はしない'),('sensory_notes','感覚・操作面の配慮','例：大きな音が苦手、画面酔いの訴えがある'),('participation_notes','活動環境や参加の配慮','例：見通しカード、休憩、協力人数の調整') ] %}
+<label>{{label}}<small>{{tip}}</small><textarea name="{{key}}" rows="3">{{child.data[key] if child else ''}}</textarea></label>{% endfor %}
+<div class="actions"><button class="primary">保存する</button><a class="button secondary" href="{% if child and child.id %}/children/{{child.id}}{% else %}/{% endif %}">キャンセル</a></div>
+</form>{% endblock %}

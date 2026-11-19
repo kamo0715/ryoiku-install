@@ -1,0 +1,22 @@
+{% extends "base.html" %}{% block content %}<a href="/plans/{{plan.id}}" class="back">← 計画書に戻る</a><div class="eyebrow">HUMAN REVIEW</div><h1>計画書の編集と確認</h1>
+<p class="muted">AIの文章をそのまま使わず、個別支援計画に照らして校正できます。編集すると承認状態は下書きに戻ります。</p>
+<form method="post" class="panel stack"><input type="hidden" name="_csrf" value="{{csrf}}">
+{% for key,label in [('title','活動タイトル'),('overview','活動のねらい'),('family_support','家族支援'),('transition_support','移行支援'),('community_support','地域支援・連携'),('note','注意・要確認事項')] %}
+<label>{{label}}<textarea name="{{key}}" rows="{{2 if key=='title' else 4}}">{{plan.data[key]}}</textarea></label>{% endfor %}
+<h2 class="form-heading">目標・配慮事項など（改行で区切る）</h2>
+{% for key,label in [('objectives','今回の目標'),('materials','準備物'),('accommodations','合理的配慮'),('child_choices','本人が選べること'),('safety','安全管理'),('observations','観察ポイント'),('basic_activities','基本活動（正式な名称を使用）')] %}
+<label>{{label}}<textarea name="{{key}}" rows="4">{{plan.data[key]|join('\n')}}</textarea></label>{% endfor %}
+<h2 class="form-heading">活動の流れ</h2>
+{% for s in plan.data.steps %}<div class="editing"><h3>手順 {{loop.index}}</h3><div class="two"><label>場面<input name="step_{{loop.index0}}_phase" value="{{s.phase}}"></label><label>時間（分）<input name="step_{{loop.index0}}_minutes" type="number" min="0" value="{{s.minutes}}"></label></div>
+{% for key,label in [('child_action','こどもの活動'),('staff_support','職員の支援'),('evaluation','観察・評価')] %}
+<label>{{label}}<textarea name="step_{{loop.index0}}_{{key}}" rows="3">{{s[key]}}</textarea></label>{% endfor %}</div>{% endfor %}
+<h2 class="form-heading">5領域との関連</h2>{% for d in plan.data.domains %}{% set idx=loop.index0 %}
+<div class="editing"><h3>{{d.name}}</h3>
+{% for key,label in [('weight','位置付け（主・関連・今回は直接の対象外）'),('reason','理由'),('activity','関連活動'),('assessment','評価方法')] %}
+<label>{{label}}<textarea name="domain_{{idx}}_{{key}}" rows="2">{{d[key]}}</textarea></label>{% endfor %}</div>{% endfor %}
+<h2 class="form-heading">個別支援計画の目標への対応</h2>
+{% for g in plan.data.goal_links %}{% set idx=loop.index0 %}<div class="editing">
+{% for key,label in [('source_goal','元の目標'),('program_link','活動との関係'),('check','確認ポイント')] %}
+<label>{{label}}<textarea name="goal_{{idx}}_{{key}}" rows="2">{{g[key]}}</textarea></label>{% endfor %}</div>{% endfor %}
+<label>確認した内容・修正理由<textarea name="review_note" rows="3">{{plan.review_note}}</textarea></label>
+<div class="actions"><button class="primary">修正内容を保存</button><a class="button secondary" href="/plans/{{plan.id}}">キャンセル</a></div></form>{% endblock %}

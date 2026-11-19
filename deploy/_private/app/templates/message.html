@@ -1,0 +1,3 @@
+{% extends "base.html" %}{% block content %}<div class="center-card"><h1>処理できませんでした</h1><p role="alert">{{message}}</p>
+{% if request_id %}<p class="muted">受付番号：<code>{{request_id}}</code></p>{% endif %}
+<a href="/" class="button primary">一覧に戻る</a></div>{% endblock %}

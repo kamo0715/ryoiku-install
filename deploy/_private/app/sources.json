@@ -1,0 +1,43 @@
+{
+  "reviewed_on": "2026-11-14",
+  "primary": [
+    {
+      "title": "放課後等デイサービスガイドライン（令和6年7月）",
+      "authority": "こども家庭庁",
+      "url": "https://www.cfa.go.jp/assets/contents/node/basic_page/field_ref_resources/7692b729-5944-45ee-bbd8-f0283126b7db/def1acaf/20241101_policies_shougaijishien_shisaku_guideline_tebiki_06.pdf",
+      "use": "本人支援の5領域、4つの基本活動、本人の意思、家族支援、移行支援、地域連携、計画の評価"
+    },
+    {
+      "title": "放課後等デイサービスガイドライン（令和6年7月・審議会資料）",
+      "authority": "こども家庭庁",
+      "url": "https://www.cfa.go.jp/assets/contents/node/basic_page/field_ref_resources/0ff6d844-e785-416a-9bbc-194938099218/c6b4dc19/20240709_councils_shingikai_shougaiji_shien_0ff6d844_05.pdf",
+      "use": "内容の照合。上記ガイドラインと実質的に同じ文書の別掲"
+    },
+    {
+      "title": "各種ガイドライン・手引き等について",
+      "authority": "こども家庭庁",
+      "url": "https://www.cfa.go.jp/policies/shougaijishien/shisaku/guideline_tebiki/",
+      "use": "公開されている正式なガイドラインと改訂・更新状況の確認。2026-04-09に関連評価様式の掲載資料更新"
+    }
+  ],
+  "background": [
+    {
+      "title": "児童発達支援及び放課後等デイサービスの役割・支援内容等について（令和3年8月12日）",
+      "authority": "厚生労働省",
+      "url": "https://www.mhlw.go.jp/content/12401000/000817839.pdf",
+      "use": "検討経緯の資料。現行基準そのものとして扱わない"
+    }
+  ],
+  "secondary": [
+    {
+      "title": "発達支援の5領域とは｜はぐめいと",
+      "url": "https://www.hugmate.net/index/v/471/",
+      "use": "用語や具体例の補助資料。本文の直接取得がタイムアウトしたため一次資料を優先"
+    },
+    {
+      "title": "放課後等デイサービスの5領域とは｜療育のミカタ",
+      "url": "https://teracell.co.jp/article/5domain",
+      "use": "用語の補助資料。本文の自動抽出が制限されたため一次資料を優先"
+    }
+  ]
+}

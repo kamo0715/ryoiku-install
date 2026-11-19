@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% block content %}
+<div class="eyebrow">STAFF ADMINISTRATION</div><h1>職員アカウントの一元管理</h1>
+<p class="muted">職員の追加・権限変更・一時停止/再有効化・パスワード再設定をWeb画面だけで管理できます。変更は操作ログに残ります。</p>
+<div class="stats"><div class="stat"><strong>{{users|length}}</strong><span>登録アカウント</span></div><div class="stat"><strong>{{users|selectattr('active')|list|length}}</strong><span>利用中</span></div><div class="stat"><strong>{{users|selectattr('role','equalto','admin')|list|length}}</strong><span>管理者（停止中含む）</span></div></div>
+<section class="panel"><h2>アカウント一覧</h2><p class="muted">自身の権限変更や停止はできません。変更した職員のログイン状態は即時に無効化されます。</p>
+{% for a in users %}<div class="account-card"><div class="account-head"><div><strong>{{a.username}}</strong> <span class="pill">{{{'admin':'管理者','reviewer':'確認担当','staff':'職員'}[a.role]}}</span> {% if a.id==user.id %}<span class="muted">自分</span>{% endif %}</div><span class="pill {{'pill-active' if a.active else 'pill-muted'}}">{{'有効' if a.active else '停止中'}}</span></div>
+<div class="muted" class="text-small">アカウントID: {{a.id}} ／ 登録: {{a.created_at[:10]}}</div>
+<div class="account-tools"><form action="/admin/users/{{a.id}}/role" method="post" class="tool-form"><input type="hidden" name="_csrf" value="{{csrf}}"><label>権限を変更<select name="role" {% if a.id==user.id %}disabled{% endif %}><option value="staff" {% if a.role=='staff' %}selected{% endif %}>職員</option><option value="reviewer" {% if a.role=='reviewer' %}selected{% endif %}>確認担当</option><option value="admin" {% if a.role=='admin' %}selected{% endif %}>管理者</option></select></label><button class="secondary" {% if a.id==user.id %}disabled{% endif %}>権限変更</button></form>
+<form action="/admin/users/{{a.id}}/status" method="post" class="tool-form" data-confirm="この職員の利用状態を変更しますか？"><input type="hidden" name="_csrf" value="{{csrf}}"><input type="hidden" name="active" value="{{'0' if a.active else '1'}}"><label>アカウント状態<small>{{'ログインを拒否します' if a.active else 'ログインを許可します'}}</small></label><button class="secondary" {% if a.id==user.id %}disabled{% endif %}>{{'利用停止' if a.active else '再有効化'}}</button></form>
+<form action="/admin/users/{{a.id}}/password" method="post" class="tool-form" data-confirm="パスワードを更新し、現在のログインを無効化しますか？"><input type="hidden" name="_csrf" value="{{csrf}}"><label>新しいパスワード<input name="password" type="password" required minlength="12" maxlength="256" autocomplete="new-password" placeholder="12文字以上"></label><button class="secondary">再設定</button></form></div>
+</div>{% endfor %}</section>
+<form method="post" class="panel stack narrow"><input type="hidden" name="_csrf" value="{{csrf}}"><h2>＋ 新しい職員を登録</h2>
+<label>ログイン名<input name="username" required pattern="[A-Za-z0-9_.-]{3,50}" maxlength="50" autocomplete="off" placeholder="例：staff_001"></label>
+<label>初期パスワード<input name="password" type="password" minlength="12" maxlength="256" required autocomplete="new-password"><small>12文字以上。本人には安全な手段で伝えてください。</small></label>
+<label>付与する権限<select name="role"><option value="staff">職員（利用者・計画の作成、出力）</option><option value="reviewer">確認担当（職員権限＋内容確認）</option><option value="admin">管理者（すべての管理画面）</option></select></label>
+<button class="primary">職員アカウントを追加</button></form>
+<div class="notice warn">個人ごとのアカウントを発行してください。共通アカウントの共有や、パスワードの平文メール送付は避けてください。</div>
+{% endblock %}

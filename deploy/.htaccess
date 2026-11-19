@@ -1,0 +1,13 @@
+Options -Indexes
+AddHandler cgi-script .cgi
+<IfModule mod_rewrite.c>
+RewriteEngine On
+# Explicit block for app source, vendor libraries, secrets and DB backups.
+RewriteRule ^_private(/|$) - [F,L,NC]
+RewriteRule (^|/)(\.env|.*\.(sqlite3?|db|bak|pem|key|log|zip|sh))$ - [F,L,NC]
+RewriteCond %{HTTPS} !=on
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=302,L]
+RewriteRule ^static/ - [L]
+RewriteRule ^index\.cgi$ - [L]
+RewriteRule ^ index.cgi [L,QSA]
+</IfModule>

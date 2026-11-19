@@ -1,0 +1,23 @@
+# Keep real user/child data and credentials out of Git
+.env
+.env.*
+!.env.example
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*_backup*
+*.bak
+*.log
+*.key
+*.pem
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+_private/data/
+deploy/_private/data/
+private_data/
+deploy/_private/vendor/
+.DS_Store

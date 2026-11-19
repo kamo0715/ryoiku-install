@@ -1,0 +1,44 @@
+{
+  "request_type": "contextual_activity_draft",
+  "privacy_version": "controlled-context-2",
+  "profile": {
+    "subject": "児童A",
+    "school_context": "学校A（小学校段階）",
+    "identities": "本人・家族・職員の実名は非送信"
+  },
+  "support_context": {
+    "has_registered_plan": true,
+    "generic_objective_tags": [
+      "活動や手順を自分で選ぶ",
+      "見通しをもって活動する"
+    ],
+    "generic_support_methods": [
+      "視覚的な手順提示",
+      "選択肢の提示"
+    ],
+    "concrete_goal_cues": [
+      "2択から本人が選ぶ",
+      "指差しで希望を示す"
+    ],
+    "concrete_support_cues": [
+      "タイマーで時間の見通しを示す",
+      "複数の選択肢を提示する",
+      "視覚的な見通しを提示する",
+      "10分程度で区切り、活動の見通しを示す"
+    ],
+    "interaction_context": [],
+    "relevant_domains": [],
+    "verbatim_private_records": "非送信・職員が原文で照合"
+  },
+  "activity": {
+    "activity_mode": "other",
+    "kind_code": "typing",
+    "catalog_label": "タイピング",
+    "catalog_group": "ICT・デジタル",
+    "catalog_focus": "画面時間・個人情報・オンライン接続範囲を確認し、課題を小さく分ける。",
+    "catalog_safety": "公開設定、外部ユーザーとの接続、端末の利用時間と個人情報を確認する。 画面の見やすさ、手指の疲労、入力補助、個人情報やアカウントの公開範囲を確認する。",
+    "duration_minutes": 45,
+    "group_form": "形態は現場で確認",
+    "user_free_text": "非送信・職員がローカルで確認"
+  }
+}

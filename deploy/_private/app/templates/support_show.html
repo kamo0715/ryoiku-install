@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block content %}<a class="back" href="/children/{{child.id}}">← 利用者詳細へ</a><div class="eyebrow">INDIVIDUAL SUPPORT PLAN</div><h1>{{child.data.name}}｜個別支援計画 第{{sup.version}}版</h1>
+<p class="muted">登録日 {{sup.created_at[:10]}}（以前の版は読み取り専用）</p>
+<div class="panel"><dl class="details">
+{% for key,label in [('period_start','適用開始'),('period_end','適用終了'),('child_intentions','本人の希望'),('family_intentions','家族の希望'),('assessment','アセスメント'),('long_goal','長期目標'),('short_goal','短期目標'),('support_policy','総合的な方針'),('domain_health','健康・生活'),('domain_motor','運動・感覚'),('domain_cognition','認知・行動'),('domain_language','言語・コミュニケーション'),('domain_social','人間関係・社会性'),('accommodation','合理的配慮'),('family_support','家族支援'),('transition_support','移行支援'),('community_support','地域連携'),('other_notes','その他'),('original_text','入力された原文')] %}
+<dt>{{label}}</dt><dd class="pre">{{sup.data.get(key) or '未入力'}}</dd>{% endfor %}</dl></div>
+<a class="button primary" href="/children/{{child.id}}/support/new">内容を更新して新版を作成</a>{% endblock %}
