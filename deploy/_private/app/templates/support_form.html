@@ -33,7 +33,7 @@
 {% for warning in ocr_warnings %}<div class="notice warn">{{warning}}</div>{% endfor %}
 {% endif %}
 </section>
-<form class="panel stack" method="post"><input type="hidden" name="_csrf" value="{{csrf}}">
+<form class="panel stack" method="post" action="/children/{{child.id}}/support/new"><input type="hidden" name="_csrf" value="{{csrf}}">
 <div class="two"><label>適用開始日<input type="date" name="period_start" value="{{form_data.get('period_start','')}}"></label>
 <label>適用終了日<input type="date" name="period_end" value="{{form_data.get('period_end','')}}"></label></div>
 <h2 class="form-heading">本人と家族の意向・目標</h2>

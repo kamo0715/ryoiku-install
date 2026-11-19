@@ -26,6 +26,12 @@ jobs:
         run: |
           cd docker-lan-test
           ./prepare.sh
+      - name: PDF import and manual text transfer save regression
+        run: |
+          cd docker-lan-test
+          cp docker/overrides/support_form.html upload_to_domain_root/_private/app/templates/support_form.html
+          python3 tests_docker/test_pdf_save.py
+
       - name: Local static and report output tests
         run: |
           cd docker-lan-test

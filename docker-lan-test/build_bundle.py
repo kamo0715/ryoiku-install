@@ -15,7 +15,7 @@ def package(out:Path):
     if not (ROOT/'upload_to_domain_root/_private/vendor/fastapi').is_dir():
         raise SystemExit('v2.20 vendor dependencies missing')
     parts=['Dockerfile','compose.yaml','.env.example','.dockerignore','.gitignore',
-           'install-lan-test.sh','remove-old-ryoiku.sh','prepare.sh','README_DOCKER_LAN.md','build_bundle.py']
+           'install-lan-test.sh','remove-old-ryoiku.sh','fix-pdf-save-local.sh','prepare.sh','README_DOCKER_LAN.md','build_bundle.py']
     files=[ROOT/x for x in parts]
     files.extend(p for folder in ('docker','tests_docker','upload_to_domain_root')
                  for p in (ROOT/folder).rglob('*') if p.is_file())
@@ -25,7 +25,11 @@ def package(out:Path):
     with ZipFile(out,'w',ZIP_DEFLATED,compresslevel=7) as z:
         for p in sorted(set(files)):
             rel=p.relative_to(ROOT)
-            z.write(p,arcname=f'{NAME}/{rel.as_posix()}')
+            # Ensure the self-contained ZIP has the fixed template, not archived v2.20's old form.
+            if rel.as_posix() == 'upload_to_domain_root/_private/app/templates/support_form.html':
+                z.write(ROOT/'docker/overrides/support_form.html',arcname=f'{NAME}/{rel.as_posix()}')
+            else:
+                z.write(p,arcname=f'{NAME}/{rel.as_posix()}')
         bad=z.testzip()
         if bad:raise SystemExit(f'ZIP corrupted entry: {bad}')
     with ZipFile(out) as z:

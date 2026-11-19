@@ -138,3 +138,13 @@ LANのアドレスとポートは `.env` と合わせて書き換えてくださ
 ## 検証状況
 
 FastAPIの起動・初期管理者登録・ログイン・静的ファイル・LANアクセス拒否・Hostヘッダー拒否のローカル動作試験を通過しています。Docker Engineの実コンテナ試験は別途GitHub Actionsで実施します。
+
+## PDF転記後の保存不具合の修正（2026-11-19）
+
+PDF・文章の解析結果を表示する画面で、保存フォームの送信先が省略され、解析エンドポイントに再投稿される不具合を修正しました。`docker/overrides/support_form.html` がDockerビルド時に反映されます。保存先は `/children/<ID>/support/new` です。本人・保護者・アセスメントの3チェックと原本確認は引き続き必須です。既存のDockerボリューム（`ryoiku_lan_test_data`）を保持したまま、`docker compose up -d --build` で反映できます。
+
+新しい配布ZIP `ryoiku-v2.20-docker-lan-pdf-savefix.zip` は、2026-11-19付の修正版です。古い同名ZIPを無条件に上書きしないでください。
+
+### すでに起動している環境の更新
+
+`cd`で以前の`ryoiku-v2.20-docker-lan-test`のフォルダへ移動し、更新版の`fix-pdf-save-local.sh`を置いて`sudo ./fix-pdf-save-local.sh`を実行すると、画面テンプレートのみ安全に差し替え、データボリュームを保持したまま対象コンテナを再ビルドします。最新版ZIPを展開し直す場合は旧データのバックアップを先に実施してください。

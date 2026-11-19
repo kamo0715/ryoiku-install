@@ -13,6 +13,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /opt/ryoiku/app
 COPY --chown=10001:10001 upload_to_domain_root/_private/vendor/ /opt/ryoiku/vendor/
 COPY --chown=10001:10001 upload_to_domain_root/_private/app/ /opt/ryoiku/app/
+# Fix support-plan save destination when preview was rendered by /support/pdf or /support/analyze.
+COPY --chown=10001:10001 docker/overrides/support_form.html /opt/ryoiku/app/templates/support_form.html
 # The domain-root stylesheet/script are NOT copied by Lolipop into app/static.
 COPY --chown=10001:10001 upload_to_domain_root/static/day_flow_multi.css upload_to_domain_root/static/day_flow_multi.js /opt/ryoiku/app/static/
 COPY --chown=10001:10001 docker/server.py /opt/ryoiku/runtime/server.py

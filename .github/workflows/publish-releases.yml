@@ -88,6 +88,7 @@ jobs:
           (cd docker-lan-test && ./prepare.sh)
           python3 docker-lan-test/build_bundle.py --output dist/full/v2.20/ryoiku-v2.20-docker-lan-test.zip
           python3 docker-lan-test/build_bundle.py --output dist/full/v2.20/ryoiku-v2.20-docker-lan-replace.zip
+          python3 docker-lan-test/build_bundle.py --output dist/full/v2.20/ryoiku-v2.20-docker-lan-pdf-savefix.zip
 
       - name: Publish releases (skip existing files)
         shell: bash
