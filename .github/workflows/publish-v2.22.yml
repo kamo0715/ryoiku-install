@@ -71,8 +71,12 @@ jobs:
             if curl --noproxy '*' -fsS "http://${ip4}:19180/healthz";then break;fi
             sleep 2
           done
-          curl --noproxy '*' -fsS "http://${ip4}:19180/first-setup" | grep -q '初回管理者登録'
-          curl --noproxy '*' -fsS "http://${ip4}:19180/static/generate_multi_select.js" | grep -q 'curriculum-multi-form'
+          curl --noproxy '*' -fsS "http://${ip4}:19180/first-setup" -o "$RUNNER_TEMP/ryoiku-first-setup.html"
+          grep -Fq '初回管理者登録' "$RUNNER_TEMP/ryoiku-first-setup.html"
+          # Before first registration, the app intentionally redirects /static to /first-setup.
+          docker compose exec -T ryoiku grep -Fq 'curriculum-multi-form' /opt/ryoiku/app/static/generate_multi_select.js
+          code="$(curl --noproxy '*' -sS -o /dev/null -w '%{http_code}' "http://${ip4}:19180/static/generate_multi_select.js")"
+          test "$code" = 303
           docker compose exec -T ryoiku python3 -c 'import app; assert app.app.title'
           docker compose ps
 
