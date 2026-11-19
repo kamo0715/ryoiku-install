@@ -30,7 +30,37 @@ Dockerは **Linux hostネットワーク**を使いますが、アプリは指�
 
 既存のコンテナ名が異なる場合は無理に削除せず、`docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'` で確認してください。
 
-## 3. ZIPで配布された場合：インストール
+## 3. 公開GitHubからwgetでダウンロード・更新（推奨）
+
+v2.21の公開リポジトリとReleasesから、**認証トークン不要**でZIPを取得できます。旧版の0バイトZIPやHTTP 403を誤って展開しないよう、配布済みのSHA-256を照合してから展開するインストーラーを用意しています。
+
+```bash
+cd ~
+sudo apt update && sudo apt install -y wget unzip
+wget -O install-ryoiku-v2.21-wget.sh \\
+  https://raw.githubusercontent.com/kamo0715/ryoiku-install/main/install-ryoiku-v2.21-wget.sh
+bash -n install-ryoiku-v2.21-wget.sh
+bash install-ryoiku-v2.21-wget.sh
+```
+
+インストーラーはGitHub Release `v2.21`の`ryoiku-v2.21-docker-lan-test.zip`を直接ダウンロードし、固定したSHA-256 `d68f540010f290b60a3f31e1099a088dd1f063a55a45b445253a86cee1f64bd0`を照合します。失敗時は旧コンテナを削除しません。検証後に展開し、新イメージのビルドに成功した場合のみ、療育アプリと判定できた旧コンテナを更新します。既存の`.env`とDockerボリュームは保持します。
+
+Dockerを変更せずダウンロードだけ行う場合：
+
+```bash
+bash install-ryoiku-v2.21-wget.sh --download-only
+```
+
+ZIPだけ手動で取得したい場合：
+
+```bash
+wget -O ryoiku-v2.21-docker-lan-test.zip \\
+  https://github.com/kamo0715/ryoiku-install/releases/download/v2.21/ryoiku-v2.21-docker-lan-test.zip
+echo 'd68f540010f290b60a3f31e1099a088dd1f063a55a45b445253a86cee1f64bd0  ryoiku-v2.21-docker-lan-test.zip' | sha256sum -c -
+unzip -tq ryoiku-v2.21-docker-lan-test.zip
+```
+
+## 4. ZIPで配布された場合：インストール
 
 ```bash
 unzip ryoiku-v2.21-docker-lan-test.zip
@@ -55,18 +85,18 @@ docker compose up -d --build
 
 `LAN_BIND_IP=0.0.0.0`、公開IP、広すぎるサブネットなどは**起動を拒否**します。
 
-## 4. GitHubのソースから構築する場合
+## 5. GitHubのソースから構築する場合
 
 ```bash
 git clone https://github.com/kamo0715/ryoiku-install.git
-cd ryoiku-install/docker-lan-test
+cd ryoiku-install/docker-lan-v2.21
 ./prepare.sh
 ./install-lan-test.sh
 ```
 
 `prepare.sh` は親リポジトリ内の**公式v2.20完全版ZIP（依存ライブラリ）**をSHA-256照合して展開し、保存済みのv2.21ソースを重ねます。Dockerイメージに含めるアプリのバージョンはv2.21です。
 
-## 5. 初期登録と画面を開く
+## 6. 初期登録と画面を開く
 
 Ubuntu Serverで、初回登録コードを確認します。
 
@@ -83,7 +113,7 @@ http://192.168.1.50:18080/first-setup
 
 初回登録コード、管理者ユーザー名、**16文字以上**のパスワードを入力します。登録後、初回コードは破棄されます。以後は `/login` からログインします。実在の児童情報ではなく架空のデモデータで検証してください。
 
-## 6. 確認する機能
+## 7. 確認する機能
 
 - 職員ログイン・職員登録・権限
 - 架空の利用者登録、個別支援計画
@@ -102,7 +132,7 @@ docker compose logs --tail=100 ryoiku
 curl --noproxy '*' -i http://192.168.1.50:18080/healthz
 ```
 
-## 7. 停止・再起動・更新
+## 8. 停止・再起動・更新
 
 ```bash
 docker compose stop      # 停止（データ維持）
@@ -115,7 +145,7 @@ docker compose up -d --build    # 再構築して起動（データ維持）
 
 **注意：** `docker compose down -v` はデータを完全削除します（テスト環境を初期化する場合にだけ使ってください）。既存の録画サーバー・Minecraft・TailscaleなどのDockerコンテナは操作しません。
 
-## 8. LANアクセスの追加保護（任意）
+## 9. LANアクセスの追加保護（任意）
 
 ホストOSにUFWがあり、**すでに安全に有効化されている場合のみ**、LANだけ許可できます。UFWを初めて有効化するとSSH接続を失う場合があるため、自動では有効化しません。
 
@@ -126,7 +156,7 @@ sudo ufw insert 2 deny from any to 192.168.1.50 port 18080 proto tcp
 
 LANのアドレスとポートは `.env` と合わせて書き換えてください。Docker `host` ネットワークを使うので、Docker公開ポートのNATによるUFW迂回を避けています。ただし、hostネットワークはネットワーク名前空間の分離を持たないため、テスト用途に限定します。
 
-## 9. 安全設計上の制限
+## 10. 安全設計上の制限
 
 - LANアクセスを制限するだけで、**HTTPSや完全なネットワーク隔離は提供しません**
 - `127.0.0.1` やTailscale IP、パブリックIPでの待ち受けを行いません

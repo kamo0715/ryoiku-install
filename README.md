@@ -10,6 +10,19 @@
 v2.11〜v2.19は保存したアプリファイルと共通依存ライブラリから再構成したZIP、v2.20は元ZIPのSHA-256を照合して復元したものです。
 今後は版別ソースを `release-sources/` に追加して `main` にプッシュすると、自動リリースワークフローが未公開の版を作成します。詳しくは [リリース管理手順](docs/RELEASES.md) を参照してください。
 
+## 公開GitHubからwgetでv2.21を導入（トークン不要）
+
+リポジトリとv2.21の配布ファイルは公開されています。Ubuntu Server（AMD64）にwgetで直接ダウンロードでき、GitHubのPersonal Access Tokenは不要です。ZIPは公開済みReleaseのSHA-256で検証し、エラー時は旧Dockerコンテナを変更しません。
+
+```bash
+sudo apt update && sudo apt install -y wget unzip
+wget -O install-ryoiku-v2.21-wget.sh https://raw.githubusercontent.com/kamo0715/ryoiku-install/main/install-ryoiku-v2.21-wget.sh
+bash -n install-ryoiku-v2.21-wget.sh
+bash install-ryoiku-v2.21-wget.sh
+```
+
+ダウンロードと検証だけ実行する場合：`bash install-ryoiku-v2.21-wget.sh --download-only`。詳しくは[Docker LAN版の手順](docker-lan-v2.21/README_DOCKER_LAN.md)を参照してください。LANテスト環境はHTTPのため**実在の利用者情報を入力しないでください**。
+
 ## v2.21：カリキュラム作成から1日の流れへ直接移動
 
 カリキュラム生成画面で「生成後、そのまま1日の支援の流れを作成する」を選べます。生成済みカリキュラムからも直接開けます。これまでのPDF転記・保存修正と小学校高学年〜高校生向け利用者用帳票は維持しています。
@@ -48,8 +61,8 @@ AI連携時は個人識別情報を必要最小限に置換・抽象化し、支
 
 > 本番ロリポップ環境での動作は未検証です。デプロイ前に管理者・職員・本人用表示・帳票・認証・AI送信前確認をテストしてください。
 
-## LAN専用Dockerテスト環境（v2.20）
+## LAN専用Dockerテスト環境（v2.21）
 
-Linux / AMD64 のUbuntu Serverで、LAN側IPだけに待ち受けるDockerテスト版は [docker-lan-test/README_DOCKER_LAN.md](docker-lan-test/README_DOCKER_LAN.md) を参照してください。ロリポップ用既存環境は変更しません。初回コード・パスワード等はDockerボリュームに保存し、Gitにはコミットしません。**HTTPのため架空データで検証してください。**
+Linux / AMD64 のUbuntu Serverで、LAN側IPだけに待ち受けるDockerテスト版は [docker-lan-v2.21/README_DOCKER_LAN.md](docker-lan-v2.21/README_DOCKER_LAN.md) を参照してください。ロリポップ用既存環境は変更しません。初回コード・パスワード等はDockerボリュームに保存し、Gitにはコミットしません。**HTTPのため架空データで検証してください。**
 
 - v2.21: カリキュラム生成直後に1日の流れを編集・出力する動線を追加
