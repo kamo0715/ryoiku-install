@@ -31,7 +31,8 @@ jobs:
           cd docker-lan-test
           python3 -m py_compile docker/server.py build_bundle.py
           python3 tests_docker/test_exports.py
-          bash -n install-lan-test.sh prepare.sh
+          python3 tests_docker/test_remove_old.py
+          bash -n install-lan-test.sh remove-old-ryoiku.sh prepare.sh
 
       - name: Test Docker configuration and boot with Linux host LAN binding
         run: |

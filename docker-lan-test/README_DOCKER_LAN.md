@@ -14,7 +14,23 @@
 
 Dockerは **Linux hostネットワーク**を使いますが、アプリは指定したLAN IPv4にしかバインドしません。加えて指定CIDR以外の接続元をHTTP 403で拒否します。`X-Forwarded-For` も信用しません。ルーター側ではポート転送・公開を設定しないでください。localhost (`127.0.0.1`) からは接続できません。LAN IPでアクセスします。
 
-## 2. ZIPで配布された場合：インストール
+## 2. 旧Docker版の自動停止・削除（v2.20 更新版）
+
+新しい `install-lan-test.sh` は先に **v2.20のDockerイメージをビルド**し、成功後に旧コンテナを識別して削除し、新コンテナを起動します。
+
+識別対象は `minecraft-ryoiku-web`、`ryoiku-lan-test`、`ryoiku-curriculum`、`ryoiku-web` です。ただし、名前だけでなくDockerイメージ名かComposeラベルから**療育アプリ本体であることを確認できたものだけ**を削除します。識別に失敗した場合は中止します。関連性を確認できないコンテナ、録画サーバー、Minecraft、Tailscaleは操作しません。
+
+事前確認のみ：
+
+```bash
+./remove-old-ryoiku.sh --check
+```
+
+実際の削除：`install-lan-test.sh` の中で自動実行されます。削除するのは**コンテナ本体のみ**です。既存のDockerボリューム、SQLite DB、旧イメージ、Compose設定、バックアップは消去しません。ただし新コンテナは別ボリューム `ryoiku_lan_test_data` を使用するため、旧データは**自動移行されません**。実際の記録はこのHTTPテスト環境に移さないでください。
+
+既存のコンテナ名が異なる場合は無理に削除せず、`docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'` で確認してください。
+
+## 3. ZIPで配布された場合：インストール
 
 ```bash
 unzip ryoiku-v2.20-docker-lan-test.zip
@@ -39,7 +55,7 @@ docker compose up -d --build
 
 `LAN_BIND_IP=0.0.0.0`、公開IP、広すぎるサブネットなどは**起動を拒否**します。
 
-## 3. GitHubのソースから構築する場合
+## 4. GitHubのソースから構築する場合
 
 ```bash
 git clone https://github.com/kamo0715/ryoiku-install.git
@@ -50,7 +66,7 @@ cd ryoiku-install/docker-lan-test
 
 `prepare.sh` は親リポジトリで保存されている**公式v2.20の配布ZIP**をSHA-256照合してから展開します。Dockerイメージに含めるのはそのv2.20アプリとライブラリです。
 
-## 4. 初期登録と画面を開く
+## 5. 初期登録と画面を開く
 
 Ubuntu Serverで、初回登録コードを確認します。
 
@@ -67,7 +83,7 @@ http://192.168.1.50:18080/first-setup
 
 初回登録コード、管理者ユーザー名、**16文字以上**のパスワードを入力します。登録後、初回コードは破棄されます。以後は `/login` からログインします。実在の児童情報ではなく架空のデモデータで検証してください。
 
-## 5. 確認する機能
+## 6. 確認する機能
 
 - 職員ログイン・職員登録・権限
 - 架空の利用者登録、個別支援計画
@@ -86,7 +102,7 @@ docker compose logs --tail=100 ryoiku
 curl --noproxy '*' -i http://192.168.1.50:18080/healthz
 ```
 
-## 6. 停止・再起動・更新
+## 7. 停止・再起動・更新
 
 ```bash
 docker compose stop      # 停止（データ維持）
@@ -99,7 +115,7 @@ docker compose up -d --build    # 再構築して起動（データ維持）
 
 **注意：** `docker compose down -v` はデータを完全削除します（テスト環境を初期化する場合にだけ使ってください）。既存の録画サーバー・Minecraft・TailscaleなどのDockerコンテナは操作しません。
 
-## 7. LANアクセスの追加保護（任意）
+## 8. LANアクセスの追加保護（任意）
 
 ホストOSにUFWがあり、**すでに安全に有効化されている場合のみ**、LANだけ許可できます。UFWを初めて有効化するとSSH接続を失う場合があるため、自動では有効化しません。
 
@@ -110,7 +126,7 @@ sudo ufw insert 2 deny from any to 192.168.1.50 port 18080 proto tcp
 
 LANのアドレスとポートは `.env` と合わせて書き換えてください。Docker `host` ネットワークを使うので、Docker公開ポートのNATによるUFW迂回を避けています。ただし、hostネットワークはネットワーク名前空間の分離を持たないため、テスト用途に限定します。
 
-## 8. 安全設計上の制限
+## 9. 安全設計上の制限
 
 - LANアクセスを制限するだけで、**HTTPSや完全なネットワーク隔離は提供しません**
 - `127.0.0.1` やTailscale IP、パブリックIPでの待ち受けを行いません

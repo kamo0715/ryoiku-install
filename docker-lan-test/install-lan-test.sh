@@ -34,8 +34,14 @@ assert net.prefixlen>=16 and ip in net and any(net.subnet_of(x) for x in rfc), '
 assert 1024 <= int(vals.get('RYOIKU_PORT','18080')) <= 65535
 print(f'Binding only to {ip}:{vals.get("RYOIKU_PORT","18080")}, allowed sources {net}')
 PY
-echo 'Building and starting the isolated LAN-only test service...'
-docker compose up -d --build
+echo 'Building the v2.20 Docker image before removing anything...'
+docker compose build
+printf '\nKnown Ryoiku container removal candidates:\n'
+./remove-old-ryoiku.sh --check
+printf '\nRemoving only verified old Ryoiku application containers...\n'
+./remove-old-ryoiku.sh --remove
+echo 'Starting the isolated LAN-only test service...'
+docker compose up -d --no-build
 bind_ip="$(sed -n 's/^LAN_BIND_IP=//p' .env | head -1)"
 port="$(sed -n 's/^RYOIKU_PORT=//p' .env | head -1)";port="${port:-18080}"
 echo "Test URL: http://${bind_ip}:${port}/first-setup"

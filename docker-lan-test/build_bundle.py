@@ -15,7 +15,7 @@ def package(out:Path):
     if not (ROOT/'upload_to_domain_root/_private/vendor/fastapi').is_dir():
         raise SystemExit('v2.20 vendor dependencies missing')
     parts=['Dockerfile','compose.yaml','.env.example','.dockerignore','.gitignore',
-           'install-lan-test.sh','prepare.sh','README_DOCKER_LAN.md','build_bundle.py']
+           'install-lan-test.sh','remove-old-ryoiku.sh','prepare.sh','README_DOCKER_LAN.md','build_bundle.py']
     files=[ROOT/x for x in parts]
     files.extend(p for folder in ('docker','tests_docker','upload_to_domain_root')
                  for p in (ROOT/folder).rglob('*') if p.is_file())
