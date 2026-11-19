@@ -1,5 +1,5 @@
 {% extends "base.html" %}{% block content %}
-<a href="/plans/{{plan.id}}" class="back">← 活動計画の詳細に戻る</a>
+<a href="/children/{{child.id}}/generate" class="back">← カリキュラム作成画面へ戻る</a>
 <div class="eyebrow">DAILY SUPPORT FLOW / MULTIPLE CURRICULA</div>
 <h1>1日の支援の流れ（複数カリキュラム対応）</h1>
 <div class="notice">同じ利用者の複数のカリキュラムを選び、実施順・時間・途中の休憩等を設定します。保存済みの活動手順を確認・修正してから1枚の時系列表にまとめ、職員用・関係機関用・利用者用のPDF／Word／Excelを生成します。<strong>PDF・Word・ExcelはA4横の1ページ印刷を前提に出力します。文字が小さくなりすぎる予定は、内容を勝手に省略せず再編集を求めます。元の活動計画は変更されません。</strong></div>
@@ -16,16 +16,16 @@
 {% for i in range(4) %}<div class="editing"><h3>前の予定 {{i+1}}</h3><div class="two"><label>場面<input name="before_{{i}}_phase" maxlength="800"></label><label>所要時間（分）<input name="before_{{i}}_minutes" type="number" min="1" max="180" data-minutes></label></div>
 <label>こどもの活動<input name="before_{{i}}_child_action" maxlength="800"></label><label>職員の支援<input name="before_{{i}}_staff_support" maxlength="800"></label><label>利用者用の活動名（任意・26文字以内）<input name="before_{{i}}_child_label" maxlength="26" placeholder="例：開始準備・予定の確認"></label><label>観察・申し送り<input name="before_{{i}}_handoff" maxlength="800"></label></div>{% endfor %}</details>
 <section class="panel stack"><h2>3. カリキュラムの選択・実施順</h2>
-<p class="muted">追加したい活動にチェックを入れ、順番を指定してください。選択した活動の手順を、PDF等に記載する前に修正できます。必要なら活動の間に休憩を挟めます。</p>
+<p class="muted">最初に選んだ{{preselected_ids|length}}件がチェックされています。さらに追加したい活動にチェックを入れ、順番を指定してください。選択した活動の手順を、PDF等に記載する前に修正できます。必要なら活動の間に休憩を挟めます。</p>
 {% if more_plans %}<div class="notice warn">同じ利用者に40件以上の活動計画があります。ここには開始元と最新の計40件を表示しています。</div>{% endif %}
 <div class="stack" id="day-plan-list">
 {% for p in candidate_plans %}
-{% set initial=(p.id==plan.id) %}
+{% set initial=(p.id in preselected_ids) %}
 <article class="editing day-plan-block" data-day-plan data-plan-id="{{p.id}}" data-default-minutes="{{p.data.steps|sum(attribute='minutes')}}">
 <div class="day-plan-head"><label class="check"><input type="checkbox" name="include_{{p.id}}" value="yes" data-day-include {% if initial %}checked{% endif %}>
 <strong>{{p.data.title or '無題の活動計画'}}</strong></label>
 <span class="muted">計画 #{{p.id}}／{{'承認済' if p.status=='approved' else '下書き'}}／{{p.data.steps|length}}手順</span></div>
-<div class="day-plan-order"><label>実施順（1〜8）<input name="order_{{p.id}}" type="number" min="1" max="8" value="{{1 if initial else ''}}" class="day-order" data-day-order></label>
+<div class="day-plan-order"><label>実施順（1〜8）<input name="order_{{p.id}}" type="number" min="1" max="8" value="{{selected_order.get(p.id, '')}}" class="day-order" data-day-order></label>
 <button type="button" class="secondary" data-move-up>↑ 上へ</button><button type="button" class="secondary" data-move-down>↓ 下へ</button></div>
 <div data-plan-editor {% if not initial %}hidden{% endif %}>
 <label>利用者用の活動名（26文字以内・任意）<input name="child_plan_{{p.id}}_label" maxlength="26" placeholder="例：Minecraftで公園を設計"></label>

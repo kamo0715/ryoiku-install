@@ -455,9 +455,9 @@ async def support_show(request:Request,cid:int,sid:int):
 async def generate_page(request:Request,cid:int):
     actor(request);child=get_child(cid);sup=latest_support(cid)
     if not child:raise HTTPException(404)
-    existing=[get_plan(x['id']) for x in plans_for_child(cid)[:12]]
+    existing=[get_plan(x['id']) for x in plans_for_child(cid)[:40]]
     return view(request,'generate.html',child=child,sup=sup,
-                recent_plans=[p for p in existing if p is not None])
+                recent_plans=[p for p in existing if p is not None],max_day_plans=MAX_PLANS)
 
 @app.post('/children/{cid}/generate')
 async def generate_post(request:Request,cid:int):
@@ -468,6 +468,22 @@ async def generate_post(request:Request,cid:int):
     # Only navigation is changed; the curriculum generation, audit and AI privacy
     # confirmation remain identical for both choices.
     after_generate='day_flow' if f.get('after_generate')=='day_flow' else 'detail'
+    # Combine newly generated activities with selected saved activities from
+    # the same user profile. These IDs are navigation-only; never sent to AI.
+    combine_raw=f.getlist('combine_plan_ids')
+    if len(combine_raw)>MAX_PLANS-1:
+        raise HTTPException(400)
+    combine_ids=[]
+    for raw in combine_raw:
+        if not re.fullmatch(r'[1-9]\d{0,9}',str(raw)):
+            raise HTTPException(400)
+        other_id=int(raw)
+        if other_id in combine_ids:
+            raise HTTPException(400)
+        other=get_plan(other_id)
+        if not other or other['child_id']!=cid:
+            raise HTTPException(403)
+        combine_ids.append(other_id)
     if str(f.get('consent',''))!='yes':
         return view(request,'generate.html',child=child,sup=sup,
                     message='入力情報をAIに使用することについて、事業所内の承認を確認してください。')
@@ -515,7 +531,7 @@ async def generate_post(request:Request,cid:int):
                 'nonce':nonce,'expires':int(time.time())+600}
             return view(request,'ai_privacy_preview.html',child=child,sup=sup,
                 outgoing=json.dumps(anonymous,ensure_ascii=False,indent=2),
-                opts=opts,nonce=nonce,after_generate=after_generate,
+                opts=opts,nonce=nonce,after_generate=after_generate,combine_ids=combine_ids,
                 message='児童A・学校Aの仮表示と、2択・指差し・タイマーなどの具体的な支援方法を確認してください。元の氏名・学校名・自由記述・病歴・家庭事情は送信しません。')
         # One-use approval, even if the provider fails.
         request.session.pop('ai_privacy_review',None)
@@ -555,6 +571,9 @@ async def generate_post(request:Request,cid:int):
     activity(request.state.request_id,user['id'],'ai_generate',pid,status='success',
              detail=f'provider={provider},category={mode}/{kind},support={sup["id"] if sup else "none"},missing={len(generated["missing_inputs"])}')
     if after_generate=='day_flow':
+        if combine_ids:
+            args='&'.join(f'plan_ids={other_id}' for other_id in [pid]+combine_ids)
+            return go(f'/children/{cid}/day-flow?{args}')
         return go(f'/plans/{pid}/day-flow')
     return go(f'/plans/{pid}')
 
@@ -633,16 +652,50 @@ async def add_execution(request:Request,pid:int):
     activity(request.state.request_id,user['id'],'add_execution_record',rid)
     return go(f'/plans/{pid}')
 
+def _day_flow_editor(request:Request,p:dict,chosen_ids:list[int]):
+    """Render one shared editor with safe, ordered, pre-selected curricula."""
+    cid=p['child_id']
+    candidate_ids=chosen_ids+[x['id'] for x in plans_for_child(cid) if x['id'] not in chosen_ids]
+    candidate_ids=candidate_ids[:40]
+    candidates=[get_plan(x) for x in candidate_ids]
+    candidates=[x for x in candidates if x is not None and x['child_id']==cid]
+    return view(request,'day_flow.html',plan=p,child=get_child(cid),
+                candidate_plans=candidates,max_day_plans=MAX_PLANS,
+                preselected_ids=chosen_ids,
+                selected_order={plan_id:idx+1 for idx,plan_id in enumerate(chosen_ids)},
+                more_plans=len(plans_for_child(cid))>40,
+                steps_minutes=sum(int(x.get('minutes',0)) for x in p['data'].get('steps',[])))
+
+
+@app.get('/children/{cid}/day-flow')
+async def child_day_flow_selection(request:Request,cid:int):
+    """Start a single day with multiple saved curricula selected on builder screen."""
+    actor(request)
+    child=get_child(cid)
+    if not child:raise HTTPException(404)
+    values=request.query_params.getlist('plan_ids')
+    if not 1<=len(values)<=MAX_PLANS:
+        return view(request,'message.html',message=f'同じ利用者のカリキュラムを1～{MAX_PLANS}件選んでください。')
+    chosen=[]
+    for raw in values:
+        if not re.fullmatch(r'[1-9]\d{0,9}',raw):
+            raise HTTPException(400)
+        plan_id=int(raw)
+        if plan_id in chosen:raise HTTPException(400)
+        item=get_plan(plan_id)
+        if not item or item['child_id']!=cid:
+            raise HTTPException(403)
+        chosen.append(plan_id)
+    anchor=get_plan(chosen[0])
+    return _day_flow_editor(request,anchor,chosen)
+
+
 @app.get('/plans/{pid}/day-flow')
 async def day_flow_page(request:Request,pid:int):
-    actor(request);p=get_plan(pid)
+    actor(request)
+    p=get_plan(pid)
     if not p:raise HTTPException(404)
-    candidate_ids=[pid]+[x['id'] for x in plans_for_child(p['child_id']) if x['id']!=pid]
-    candidates=[get_plan(x) for x in candidate_ids[:40]]
-    candidates=[x for x in candidates if x is not None and x['child_id']==p['child_id']]
-    return view(request,'day_flow.html',plan=p,child=get_child(p['child_id']),
-                candidate_plans=candidates,max_day_plans=MAX_PLANS,more_plans=len(candidate_ids)>40,
-                steps_minutes=sum(int(s.get('minutes',0)) for s in p['data'].get('steps',[])))
+    return _day_flow_editor(request,p,[pid])
 
 @app.post('/plans/{pid}/day-flow/export/{fmt}')
 async def day_flow_export(request:Request,pid:int,fmt:str):
