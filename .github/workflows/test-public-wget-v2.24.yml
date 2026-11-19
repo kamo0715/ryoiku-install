@@ -1,0 +1,50 @@
+name: Verify public wget installer v2.24 touch UX
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'install-ryoiku-v2.24-wget.sh'
+      - '.github/workflows/test-public-wget-v2.24.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-release-download:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check shell syntax
+        run: bash -n install-ryoiku-v2.24-wget.sh
+
+      - name: Download public v2.24 release without an authentication token
+        env:
+          GH_TOKEN: ''
+          GITHUB_TOKEN: ''
+        run: |
+          set -euo pipefail
+          bash install-ryoiku-v2.24-wget.sh --download-only --dir "$RUNNER_TEMP/ryoiku"
+          cd "$RUNNER_TEMP/ryoiku"
+          printf '%s  %s\n' \
+            0b97599f644214b796771e7a1e19cb6e55877b1821219bfe00719281002ba82c \
+            ryoiku-v2.24-docker-lan-test.zip | sha256sum -c -
+          unzip -tq ryoiku-v2.24-docker-lan-test.zip
+          test ! -e ryoiku-v2.24-docker-lan-test/.env
+
+      - name: Reject HTTP download failures without extracting or stopping containers
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/mockbin" "$RUNNER_TEMP/bad-download"
+          printf '%s\n' '#!/usr/bin/env bash' 'exit 8' > "$RUNNER_TEMP/mockbin/wget"
+          chmod +x "$RUNNER_TEMP/mockbin/wget"
+          if PATH="$RUNNER_TEMP/mockbin:$PATH" \
+            bash install-ryoiku-v2.24-wget.sh --download-only --dir "$RUNNER_TEMP/bad-download"
+          then
+            echo 'Download failure was not rejected!' >&2
+            exit 1
+          fi
+          test ! -e "$RUNNER_TEMP/bad-download/ryoiku-v2.24-docker-lan-test.zip"
