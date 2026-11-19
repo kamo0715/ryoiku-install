@@ -13,6 +13,7 @@ on:
       - 'install-ryoiku-v*.sh'
       - 'update-ryoiku-v*.sh'
       - 'v2.8/**'
+      - 'docker-lan-test/**'
   workflow_dispatch:
 
 permissions:
@@ -79,6 +80,13 @@ jobs:
               (cd "$dest"; sha256sum "$(basename "$src")" > PATCH_SHA256SUMS.txt)
             fi
           done
+
+      - name: Build v2.20 Docker LAN test package
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd docker-lan-test && ./prepare.sh)
+          python3 docker-lan-test/build_bundle.py --output dist/full/v2.20/ryoiku-v2.20-docker-lan-test.zip
 
       - name: Publish releases (skip existing files)
         shell: bash

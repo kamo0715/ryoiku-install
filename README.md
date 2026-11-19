@@ -39,3 +39,7 @@ AI連携時は個人識別情報を必要最小限に置換・抽象化し、支
 - v2.20: 利用者用帳票を小学校高学年〜高校生向けデザインへ変更
 
 > 本番ロリポップ環境での動作は未検証です。デプロイ前に管理者・職員・本人用表示・帳票・認証・AI送信前確認をテストしてください。
+
+## LAN専用Dockerテスト環境（v2.20）
+
+Linux / AMD64 のUbuntu Serverで、LAN側IPだけに待ち受けるDockerテスト版は [docker-lan-test/README_DOCKER_LAN.md](docker-lan-test/README_DOCKER_LAN.md) を参照してください。ロリポップ用既存環境は変更しません。初回コード・パスワード等はDockerボリュームに保存し、Gitにはコミットしません。**HTTPのため架空データで検証してください。**

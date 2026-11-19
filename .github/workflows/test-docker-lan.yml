@@ -1,0 +1,54 @@
+name: Verify latest v2.20 LAN-only Docker package
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docker-lan-test/**'
+      - 'tools/assemble-v2.20.py'
+      - 'releases/v2.20/complete_zip_parts/**'
+      - '.github/workflows/test-docker-lan.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docker-lan-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Verify release archive and extract into Docker context
+        run: |
+          cd docker-lan-test
+          ./prepare.sh
+      - name: Local static and report output tests
+        run: |
+          cd docker-lan-test
+          python3 -m py_compile docker/server.py build_bundle.py
+          python3 tests_docker/test_exports.py
+          bash -n install-lan-test.sh prepare.sh
+
+      - name: Test Docker configuration and boot with Linux host LAN binding
+        run: |
+          set -euo pipefail
+          cd docker-lan-test
+          ip4="$(ip -4 -o addr show dev "$(ip route show default | awk 'NR==1{for(i=1;i<=NF;i++)if($i=="dev")print $(i+1)}')" scope global | awk 'NR==1{split($4,a,"/");print a[1]}')"
+          cidr="$(IP4="$ip4" python3 -c 'import os,ipaddress;print(ipaddress.ip_network(os.environ["IP4"]+"/24",strict=False))')"
+          printf 'LAN_BIND_IP=%s\nLAN_ALLOWED_CIDR=%s\nRYOIKU_PORT=19170\n' "$ip4" "$cidr" > .env
+          docker compose config -q
+          docker compose up -d --build
+          trap 'docker compose logs --tail=80 || true; docker compose down || true' EXIT
+          for i in $(seq 1 40); do
+            if curl --noproxy '*' -fsS "http://${ip4}:19170/healthz"; then break; fi
+            sleep 2
+          done
+          curl --noproxy '*' -fsS "http://${ip4}:19170/first-setup" | grep -q '初回管理者登録'
+          curl --noproxy '*' -fsS "http://${ip4}:19170/static/day_flow_multi.js" | head -c 20 >/dev/null
+          docker compose exec -T ryoiku test -s /data/INITIAL_ADMIN_CODE.txt
+          docker compose exec -T ryoiku python3 -c 'import child_day_flow,day_flow,privacy,fastapi,pypdf; print("Application imports OK")'
+          docker compose ps
