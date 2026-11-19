@@ -4,16 +4,19 @@
 
 **最新ソース: v2.22** （v2.18の匿名化強化、v2.19の児童・生徒用日別帳票、v2.20の高学年〜高校生向けレイアウトを含む）
 
-## トークン不要のwget導入（公開リポジトリ／v2.21）
+## トークン不要のwget導入（公開リポジトリ／最新版 v2.22）
 
-Ubuntu Server / AMD64 / Docker Compose v2向け、LAN内限定テスト版を公開GitHubから認証なしで導入できます。
+Ubuntu Server（Linux / AMD64、Docker Compose v2）に、LAN専用テスト版を認証不要で導入できます。
 
 ```bash
-wget -qO install-ryoiku-v2.21-wget.sh https://raw.githubusercontent.com/kamo0715/ryoiku-install/main/install-ryoiku-v2.21-wget.sh
-bash install-ryoiku-v2.21-wget.sh
+cd ~
+wget -qO install-ryoiku-v2.22-wget.sh https://raw.githubusercontent.com/kamo0715/ryoiku-install/main/install-ryoiku-v2.22-wget.sh
+bash install-ryoiku-v2.22-wget.sh
 ```
 
-**既存Docker環境を変更せずファイルを取得・検証だけ**するには `bash install-ryoiku-v2.21-wget.sh --download-only` を使用します。スクリプトはGitHub Releaseの公開ダウンロードURLからZIPを取得し、公開済みv2.21アセットの**固定SHA-256**とZIP検査に合格した場合だけ展開します。まずv2.21イメージをビルドし、その後確認済みの旧療育アプリコンテナのみ入れ替えます。ボリュームは残します。HTTPS未対応のLANテストなので実在の個人情報を投入しないでください。
+配布元：[GitHub Release v2.22](https://github.com/kamo0715/ryoiku-install/releases/tag/v2.22)。ダウンロードした公式ZIPのSHA-256を検証してから展開します。失敗時は旧コンテナに触れません。新しいDockerイメージのビルド成功後に確認済みの旧療育アプリのコンテナのみ入れ替え、名前付きDockerボリュームと既存のLAN設定を維持します。
+
+ZIPをダウンロードして検証するだけの場合は `bash install-ryoiku-v2.22-wget.sh --download-only` を指定してください。実際の児童・生徒の情報はこのHTTPテスト環境に入力しないでください。
 
 ## バージョン別ダウンロード（GitHub Releases）
 
