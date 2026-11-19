@@ -9,7 +9,7 @@ on:
       - 'scripts/build_full_releases.py'
       - 'scripts/build_legacy_releases.py'
       - 'tools/assemble-v2.20.py'
-      - 'releases/v2.20/complete_zip_parts/**'
+      - 'releases/v2.*/**'
       - 'install-ryoiku-v*.sh'
       - 'update-ryoiku-v*.sh'
       - 'v2.8/**'
@@ -66,6 +66,19 @@ jobs:
         run: |
           set -euo pipefail
           python scripts/build_legacy_releases.py --out dist/legacy
+
+      - name: Attach available version-specific patch ZIPs
+        shell: bash
+        run: |
+          set -euo pipefail
+          for v in 18 19 20; do
+            src="$(find "releases/v2.$v" -maxdepth 1 -type f -name '*_ftp_patch.zip' -print -quit)"
+            if [[ -n "$src" ]]; then
+              dest="dist/full/v2.$v"
+              cp "$src" "$dest/"
+              (cd "$dest"; sha256sum "$(basename "$src")" > PATCH_SHA256SUMS.txt)
+            fi
+          done
 
       - name: Publish releases (skip existing files)
         shell: bash
