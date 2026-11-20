@@ -285,3 +285,28 @@ code { background: var(--accent-soft); border-radius: .3rem; padding: .14rem .33
   .workflow-choice strong { font-size:1rem; }
   .workflow-choice small { text-align:right; margin:0; font-size:.8rem; }
 }
+
+/* v2.25: dedicated student handoff records, touch-first and content-safe. */
+.handoff-overview .topline.small { align-items:center; gap:1rem; }
+.handoff-overview-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; margin-block-start:1rem; }
+.handoff-overview-grid > div { min-inline-size:0; padding:1rem; border:1px solid var(--line); border-radius:.8rem; background:var(--surface-2); }
+.handoff-overview-grid h3 { font-size:.91rem; margin-block:0 .35rem; color:var(--accent-strong); }
+.handoff-overview-grid .handoff-content { margin:0; }
+.handoff-content { white-space:pre-wrap; overflow-wrap:anywhere; line-break:strict; }
+.handoff-byline { color:var(--muted); font-size:.86rem; margin-block:.65rem; overflow-wrap:anywhere; }
+.handoff-form { max-inline-size:820px; }
+.handoff-history { display:grid; gap:.75rem; }
+.handoff-history-item { border:1px solid var(--line); border-radius:.8rem; background:var(--surface-2); padding:0 .9rem; }
+.handoff-history-item summary { cursor:pointer; display:flex; flex-wrap:wrap; gap:.2rem 1rem; justify-content:space-between; align-items:center; min-block-size:52px; padding-block:.75rem; }
+.handoff-history-item summary span { font-size:.84rem; color:var(--muted); }
+.handoff-history-details { margin-block:0 1rem; padding-block:1rem 0; border-top:1px solid var(--line); }
+.handoff-pages { display:flex; gap:.6rem; flex-wrap:wrap; margin-block-start:1rem; }
+@media (max-width:700px) {
+  .handoff-overview-grid { grid-template-columns:1fr; gap:.65rem; }
+  .handoff-overview-grid > div { padding:.85rem; }
+  .handoff-overview .button { inline-size:100%; }
+  .handoff-form .workflow-submit { flex-direction:column; }
+  .handoff-form .workflow-submit > * { inline-size:100%; min-block-size:48px; }
+  .handoff-history-item summary { align-items:flex-start; flex-direction:column; }
+}
+@media (pointer:coarse) { .handoff-history-item summary { min-block-size:48px; } }

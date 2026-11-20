@@ -56,6 +56,16 @@ def init_db():
           status TEXT NOT NULL DEFAULT 'saved', approved_by INTEGER, approved_at TEXT,
           review_note TEXT NOT NULL DEFAULT '', revised_at TEXT,
           FOREIGN KEY(child_id) REFERENCES children(id), FOREIGN KEY(support_id) REFERENCES support_plans(id));
+        -- Handoff entries are a separate, append-only student record, never a plan draft.
+        -- Contents are Fernet-encrypted; only metadata is indexed for recent history.
+        CREATE TABLE IF NOT EXISTS student_handoffs(
+          id INTEGER PRIMARY KEY, child_id INTEGER NOT NULL,
+          payload TEXT NOT NULL, author_id INTEGER NOT NULL,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY(child_id) REFERENCES children(id),
+          FOREIGN KEY(author_id) REFERENCES users(id));
+        CREATE INDEX IF NOT EXISTS idx_student_handoffs_child_latest
+          ON student_handoffs(child_id,id DESC);
         CREATE TABLE IF NOT EXISTS support_drafts(
           child_id INTEGER NOT NULL, author_id INTEGER NOT NULL,
           payload TEXT NOT NULL, requires_review INTEGER NOT NULL DEFAULT 0,
@@ -306,7 +316,56 @@ def child_history_counts(cid):
     with conn() as c:
         supports=c.execute('SELECT COUNT(*) FROM support_plans WHERE child_id=?',(cid,)).fetchone()[0]
         plans=c.execute('SELECT COUNT(*) FROM plans WHERE child_id=?',(cid,)).fetchone()[0]
-    return {'supports':supports, 'plans':plans}
+    return {'supports':supports, 'plans':plans, 'handoffs':handoff_count(cid)}
+
+# Separate from curricula, activity drafts, and formal support plan versions.
+# The entire handoff content is encrypted at rest, with an immutable update history.
+HANDOFF_STATES=('not_started','in_progress','paused','completed')
+HANDOFF_FIELDS=('current_work','progress','next_step','support_notes')
+
+def handoff_history(cid,limit=20,offset=0):
+    if not (1<=limit<=50) or not (0<=offset<=1000000):
+        raise ValueError('Invalid history page')
+    with conn() as c:
+        rows=c.execute('''SELECT h.id,h.child_id,h.payload,h.author_id,h.created_at,
+            u.username AS author_username FROM student_handoffs h
+            JOIN users u ON u.id=h.author_id
+            JOIN children ch ON ch.id=h.child_id AND ch.archived=0
+            WHERE h.child_id=? ORDER BY h.id DESC LIMIT ? OFFSET ?''',
+            (cid,limit,offset)).fetchall()
+    return [{**{k:v for k,v in dict(r).items() if k!='payload'},
+             'data':dec(r['payload'])} for r in rows]
+
+def latest_handoff(cid):
+    records=handoff_history(cid,limit=1)
+    return records[0] if records else None
+
+def handoff_count(cid):
+    with conn() as c:
+        return c.execute('''SELECT COUNT(*) FROM student_handoffs h
+            JOIN children ch ON ch.id=h.child_id AND ch.archived=0
+            WHERE h.child_id=?''',(cid,)).fetchone()[0]
+
+def add_handoff(cid,payload,uid,expected_latest_id):
+    if payload.get('state') not in HANDOFF_STATES:
+        raise ValueError('Invalid progress state')
+    if set(payload)!=set(HANDOFF_FIELDS)|{'state'}:
+        raise ValueError('Invalid handoff fields')
+    if any(not isinstance(payload[x],str) or len(payload[x])>1500 for x in HANDOFF_FIELDS):
+        raise ValueError('Handoff field too long')
+    if not any(payload[x].strip() for x in HANDOFF_FIELDS):
+        raise ValueError('At least one handoff note is needed')
+    with conn() as c:
+        c.execute('BEGIN IMMEDIATE')
+        active=c.execute('SELECT id FROM children WHERE id=? AND archived=0',(cid,)).fetchone()
+        if not active:raise ValueError('The student record is not accessible')
+        previous=c.execute('SELECT id FROM student_handoffs WHERE child_id=? ORDER BY id DESC LIMIT 1',(cid,)).fetchone()
+        last_id=previous['id'] if previous else 0
+        if last_id!=expected_latest_id:
+            raise ValueError('Handoff was updated by another staff member')
+        saved=c.execute('''INSERT INTO student_handoffs(child_id,payload,author_id,created_at)
+            VALUES(?,?,?,?)''',(cid,enc(payload),uid,now()))
+        return saved.lastrowid
 
 def edit_child(cid,payload):
     with conn() as c: c.execute('UPDATE children SET payload=?,updated_at=? WHERE id=?',(enc(payload),now(),cid))

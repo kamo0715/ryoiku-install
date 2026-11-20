@@ -1,0 +1,38 @@
+{% extends "base.html" %}{% block content %}
+<a href="/" class="back">← 利用者一覧</a><div class="topline"><div><div class="eyebrow">CLIENT RECORD ・ {{child.code}}</div><h1>{{child.data.name}}</h1><p class="muted">{{child.data.grade}}　{{child.data.age_band}}</p></div>
+<a href="/children/{{child.id}}/edit" class="button secondary">基本情報を編集</a></div>
+<div class="two cardside"><section class="panel"><h2>本人のプロフィール</h2><dl class="details">
+{% for k,label in [('interests','興味'),('strengths','強み'),('needs','支援ニーズ'),('sensory_notes','感覚・操作面'),('participation_notes','参加に関する配慮')] %}
+<dt>{{label}}</dt><dd>{{child.data[k] or '未入力'}}</dd>{% endfor %}</dl></section>
+<section class="panel"><h2>次の操作</h2><p class="muted">個別支援計画は改訂のたびに新版を作成し、以前の版は記録として残します。</p>
+<div class="stack"><a class="button primary" href="/children/{{child.id}}/support/new">＋ 個別支援計画を入力・更新</a>
+<a class="button secondary" href="/children/{{child.id}}/generate">✦ 療育カリキュラムをAI生成</a></div></section></div>
+<section class="panel handoff-overview" aria-labelledby="handoff-heading">
+  <div class="topline small"><div><div class="eyebrow">申し送り・進捗</div><h2 id="handoff-heading">引き継ぎ情報</h2></div>
+  <a class="button primary" href="/children/{{child.id}}/handoff">{{'引き継ぎを見る・更新' if handoff else '引き継ぎを記録'}}</a></div>
+  {% if handoff %}
+  <p class="handoff-byline">最終更新 {{handoff.updated_jst}}（JST）・{{handoff.author_username}}　<span class="pill">{{handoff.state_label}}</span></p>
+  <div class="handoff-overview-grid">
+    <div><h3>いま取り組んでいること</h3><p class="handoff-content">{{handoff.data.current_work or '記録なし'}}</p></div>
+    <div><h3>どこまで進んだか</h3><p class="handoff-content">{{handoff.data.progress or '記録なし'}}</p></div>
+    <div><h3>次回すること</h3><p class="handoff-content">{{handoff.data.next_step or '記録なし'}}</p></div>
+    <div><h3>配慮・申し送り</h3><p class="handoff-content">{{handoff.data.support_notes or '記録なし'}}</p></div>
+  </div>
+  {% else %}<p class="muted">まだ引き継ぎ情報がありません。いまの取り組みや進み具合を、生徒ごとに記録できます。カリキュラムには追加されません。</p>{% endif %}
+</section>
+<section class="panel"><div class="topline small"><h2>個別支援計画の履歴</h2><span class="muted">{{supports|length}}件</span></div>
+{% if supports %}<div class="table-scroll"><table><thead><tr><th>版</th><th>登録日</th><th>短期目標（冒頭）</th><th></th></tr></thead><tbody>
+{% for s in supports %}<tr><td>第{{s.version}}版 {% if loop.first %}<span class="pill">最新版</span>{% endif %}</td><td>{{s.created_at[:10]}}</td><td>{{s.data.short_goal[:95]}}</td><td><a href="/children/{{child.id}}/support/{{s.id}}">内容を見る</a></td></tr>{% endfor %}
+</tbody></table></div>{% else %}<p class="muted">未登録です。活動案は生成できますが、個別支援計画の目標との照合が必要です。</p>{% endif %}</section>
+<section class="panel"><div class="topline small"><h2>療育カリキュラムの履歴</h2><span class="muted">{{plans|length}}件</span></div>
+{% if plans %}<div class="table-scroll"><table><thead><tr><th>No.</th><th>作成日</th><th>活動分類</th><th>モデル</th><th>状態</th><th></th></tr></thead><tbody>
+{% for p in plans %}<tr><td>#{{p.id}}</td><td>{{p.created_at[:10]}}</td><td>{{p.curriculum_label}}</td><td>{{p.provider}} / {{p.model}}</td><td>{{'確認済み' if p.status=='approved' else '保存済み（要確認）'}}</td><td><a href="/plans/{{p.id}}">表示</a></td></tr>{% endfor %}
+</tbody></table></div>{% else %}<p class="muted">まだ生成されていません。</p>{% endif %}</section>
+{% if user.role == 'admin' %}
+<section class="panel" aria-labelledby="delete-heading">
+  <h2 id="delete-heading">利用者の削除</h2>
+  <p class="muted">管理者のみ操作できます。削除すると通常の一覧から非表示になり、個別支援計画と活動記録も閲覧できなくなります。データは保管され、管理者が復元できます。</p>
+  <a class="button secondary" href="/children/{{child.id}}/delete">利用者を削除（復元可能）</a>
+</section>
+{% endif %}
+{% endblock %}

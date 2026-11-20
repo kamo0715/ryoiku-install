@@ -4,8 +4,8 @@
   <div class="eyebrow">管理者専用 ・ 確認画面</div>
   <h1>利用者を削除（復元可能）</h1>
   <p>対象：<strong>{{child.data.name}}</strong>（管理番号 <strong>{{child.code}}</strong>）</p>
-  <p class="notice">この操作は完全消去ではありません。通常の利用者一覧から非表示にし、個別支援計画・活動案・帳票へのアクセスを停止します。管理者は「削除済み利用者」から復元できます。</p>
-  <p>紐づく記録：個別支援計画 {{counts.supports}} 件 / 活動計画 {{counts.plans}} 件（削除せず保管）</p>
+  <p class="notice">この操作は完全消去ではありません。通常の利用者一覧から非表示にし、個別支援計画・活動案・引き継ぎ情報・帳票へのアクセスを停止します。管理者は「削除済み利用者」から復元できます。</p>
+  <p>紐づく記録：個別支援計画 {{counts.supports}} 件 / 活動計画 {{counts.plans}} 件 / 引き継ぎ {{counts.handoffs}} 件（削除せず保管）</p>
   <form action="/children/{{child.id}}/delete" method="post" data-confirm="対象利用者を一覧から削除し、記録の閲覧を停止します。よろしいですか？">
     <input type="hidden" name="_csrf" value="{{csrf}}">
     <label>確認のため管理番号「{{child.code}}」を入力

@@ -7,7 +7,7 @@ import hashlib
 import json
 import sqlite3
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timezone, timedelta
 from io import BytesIO, StringIO
 from zipfile import ZipFile, ZIP_DEFLATED
 import csv
@@ -23,6 +23,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from settings import ROOT, APP_SECRET, COOKIE_SECURE, check_settings, LOG_DIR
 from storage import (init_db,init_records,conn,now,create_user,auth,user_by_id,list_users,
   new_child,get_child,all_children,deleted_children,child_history_counts,edit_child,archive_child,restore_child,new_support,get_support,
+  add_handoff,latest_handoff,handoff_history,handoff_count,
   save_support_draft,get_support_draft,delete_support_draft,
   support_history,latest_support,add_plan,add_plans_batch,get_plan,plans_for_child,save_plan,approve_plan,
   add_record,plan_records,get_setting,set_setting,activity,error,
@@ -290,13 +291,79 @@ async def child_add(request:Request):
     activity(request.state.request_id,user['id'],'create_child',cid)
     return go(f'/children/{cid}')
 
+HANDOFF_STATES={
+    'not_started':'まだ始めていない',
+    'in_progress':'取り組み中',
+    'paused':'一時中断',
+    'completed':'いったん完了',
+}
+HANDOFF_FIELDS=['current_work','progress','next_step','support_notes']
+
+def handoff_display(entry):
+    if entry is None:return None
+    timestamp=datetime.fromisoformat(entry['created_at'])
+    entry['updated_jst']=timestamp.astimezone(timezone(timedelta(hours=9))).strftime('%Y/%m/%d %H:%M')
+    entry['state_label']=HANDOFF_STATES.get(entry['data'].get('state'), '状態未設定')
+    return entry
+
+@app.get('/children/{cid}/handoff')
+async def child_handoff_page(request:Request,cid:int):
+    actor(request)
+    child=get_child(cid)
+    if not child:raise HTTPException(404)
+    page_raw=request.query_params.get('page','1')
+    if not page_raw.isdecimal() or not 1<=int(page_raw)<=5000:
+        raise HTTPException(400)
+    page=int(page_raw)
+    total=handoff_count(cid)
+    if page>1 and (page-1)*20>=total:raise HTTPException(404)
+    history=[handoff_display(x) for x in handoff_history(cid,limit=20,offset=(page-1)*20)]
+    latest=handoff_display(latest_handoff(cid))
+    values={k:latest['data'].get(k,'') if latest else '' for k in HANDOFF_FIELDS}
+    values['state']=latest['data'].get('state','in_progress') if latest else 'in_progress'
+    return view(request,'handoff.html',child=child,latest=latest,history=history,
+                total=total,history_page=page,fields=values,states=HANDOFF_STATES,
+                saved=request.query_params.get('saved')=='1')
+
+@app.post('/children/{cid}/handoff')
+async def child_handoff_save(request:Request,cid:int):
+    user=actor(request)
+    child=get_child(cid)
+    if not child:raise HTTPException(404)
+    form=await checked_form(request)
+    values=form_values(form,HANDOFF_FIELDS,limit=1500)
+    values['state']=str(form.get('state','')).strip()
+    expected=str(form.get('last_id','')).strip()
+    if not expected.isdecimal() or len(expected)>12 or values['state'] not in HANDOFF_STATES:
+        raise HTTPException(400)
+    # No partial drafts. A successful submission adds exactly one history entry.
+    if not any(values[key] for key in HANDOFF_FIELDS):
+        message='引き継ぎ内容を少なくとも1項目入力してください。'
+    else:
+        try:
+            new_id=add_handoff(cid,values,user['id'],int(expected))
+        except ValueError as exc:
+            message=('別の職員が先に更新しました。最新の内容を確認してから、再度保存してください。'
+                     if 'updated by another staff member' in str(exc) else
+                     '保存できませんでした。入力内容をご確認ください。')
+        else:
+            activity(request.state.request_id,user['id'],'save_student_handoff',cid,
+                     detail='entry_id='+str(new_id))
+            return go(f'/children/{cid}/handoff?saved=1')
+    latest=handoff_display(latest_handoff(cid))
+    return view(request,'handoff.html',child=child,latest=latest,
+                history=[handoff_display(x) for x in handoff_history(cid,limit=20)],
+                total=handoff_count(cid),history_page=1,fields=values,states=HANDOFF_STATES,
+                message=message,saved=False)
+
 @app.get('/children/{cid}')
 async def child_page(request:Request,cid:int):
     actor(request)
     child=get_child(cid)
     if not child:raise HTTPException(404)
     supports=support_history(cid)
-    return view(request,'child.html',child=child,supports=supports,plans=plans_for_child(cid))
+    return view(request,'child.html',child=child,supports=supports,plans=plans_for_child(cid),
+                handoff=handoff_display(latest_handoff(cid)))
 
 @app.get('/children/{cid}/edit')
 async def child_edit_page(request:Request,cid:int):

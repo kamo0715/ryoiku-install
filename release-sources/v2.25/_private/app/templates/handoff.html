@@ -1,0 +1,71 @@
+{% extends "base.html" %}{% block content %}
+<a href="/children/{{child.id}}" class="back">← {{child.data.name}} の生徒情報へ戻る</a>
+<div class="workflow-header">
+  <div class="eyebrow">生徒情報 ・ 申し送り</div>
+  <h1>引き継ぎ情報</h1>
+  <p>{{child.data.name}}（{{child.data.grade or '学年未設定'}}）</p>
+  <p class="muted">いま取り組んでいること、進み具合、次回の予定を職員間で共有します。<strong>カリキュラムや個別支援計画の項目は増えません。</strong></p>
+</div>
+{% if saved %}<div class="notice" role="status">引き継ぎ情報を保存しました。生徒情報にも最新の内容が表示されます。</div>{% endif %}
+<section class="panel" aria-labelledby="handoff-latest-heading">
+  <div class="topline small"><h2 id="handoff-latest-heading">現在の引き継ぎ</h2>{% if latest %}<span class="pill">{{latest.state_label}}</span>{% endif %}</div>
+  {% if latest %}
+    <p class="handoff-byline">更新：{{latest.updated_jst}}（JST）／{{latest.author_username}}</p>
+    <div class="handoff-overview-grid">
+      {% for key,label in [('current_work','いま取り組んでいること'),('progress','どこまで進んだか'),('next_step','次回すること'),('support_notes','配慮・申し送り')] %}
+      <div><h3>{{label}}</h3><p class="handoff-content">{{latest.data[key] or '記録なし'}}</p></div>
+      {% endfor %}
+    </div>
+  {% else %}<p class="muted">まだ登録されていません。下の入力欄から、最初の引き継ぎ情報を記録できます。</p>{% endif %}
+</section>
+<section class="panel" aria-labelledby="handoff-form-heading">
+  <h2 id="handoff-form-heading">{{'引き継ぎを更新する' if latest else '引き継ぎを新しく記録する'}}</h2>
+  <p class="muted">前回の内容を引き継いでいます。変更したところを更新して「保存」を押してください。保存するたびに履歴が1件追加されます。下書きは作成しません。</p>
+  <form method="post" action="/children/{{child.id}}/handoff" class="stack handoff-form">
+    <input type="hidden" name="_csrf" value="{{csrf}}">
+    <input type="hidden" name="last_id" value="{{latest.id if latest else 0}}">
+    <label for="handoff-state">取り組みの状況
+      <select id="handoff-state" name="state" required>{% for value,label in states.items() %}
+        <option value="{{value}}" {% if fields.state==value %}selected{% endif %}>{{label}}</option>
+      {% endfor %}</select>
+    </label>
+    <label for="handoff-current">いま取り組んでいること
+      <small>例：タイピングのホームポジション練習</small>
+      <textarea id="handoff-current" name="current_work" rows="3" maxlength="1500">{{fields.current_work}}</textarea>
+    </label>
+    <label for="handoff-progress">どこまで進んだか・できたこと
+      <small>例：ホームポジションを見ずに20文字入力できた。数字キーは練習中。</small>
+      <textarea id="handoff-progress" name="progress" rows="3" maxlength="1500">{{fields.progress}}</textarea>
+    </label>
+    <label for="handoff-next">次回すること
+      <small>例：数字キーから始め、5分練習した後に振り返る。</small>
+      <textarea id="handoff-next" name="next_step" rows="3" maxlength="1500">{{fields.next_step}}</textarea>
+    </label>
+    <details class="advanced-options"><summary>配慮・申し送り（必要な場合）</summary>
+      <label for="handoff-notes">職員への申し送り
+        <small>例：開始5分前に予告する。個人情報の書きすぎに注意してください。</small>
+        <textarea id="handoff-notes" name="support_notes" rows="3" maxlength="1500">{{fields.support_notes}}</textarea>
+      </label>
+    </details>
+    <div class="workflow-submit"><button class="primary" type="submit">更新内容を保存する</button><a class="button secondary" href="/children/{{child.id}}">生徒情報へ戻る</a></div>
+  </form>
+</section>
+<section class="panel" aria-labelledby="handoff-history-heading">
+  <div class="topline small"><h2 id="handoff-history-heading">更新履歴</h2><span class="muted">全{{total}}件</span></div>
+  <p class="muted">過去の記録は編集・上書きせずに保持します。更新担当者と日時を確認できます。</p>
+  {% if history %}
+    <div class="handoff-history">{% for entry in history %}
+      <details class="handoff-history-item" {% if loop.first and history_page==1 %}open{% endif %}>
+        <summary><strong>{{entry.updated_jst}}（JST）</strong><span>{{entry.author_username}} · {{entry.state_label}}</span></summary>
+        <dl class="details handoff-history-details">{% for key,label in [('current_work','いま取り組んでいること'),('progress','どこまで進んだか'),('next_step','次回すること'),('support_notes','配慮・申し送り')] %}
+          <dt>{{label}}</dt><dd class="handoff-content">{{entry.data[key] or '記録なし'}}</dd>
+        {% endfor %}</dl>
+      </details>
+    {% endfor %}</div>
+    <nav class="handoff-pages" aria-label="引き継ぎ履歴のページ切り替え">
+      {% if history_page>1 %}<a class="button secondary" href="?page={{history_page-1}}">← 新しい履歴</a>{% endif %}
+      {% if history_page*20<total %}<a class="button secondary" href="?page={{history_page+1}}">古い履歴 →</a>{% endif %}
+    </nav>
+  {% else %}<p class="muted">履歴はありません。</p>{% endif %}
+</section>
+{% endblock %}
